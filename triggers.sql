@@ -1,7 +1,4 @@
 
-
-### 4. 🧠 **Constraints & Triggers**
-
 CREATE OR REPLACE FUNCTION calc_late_duration()
 RETURNS TRIGGER AS $$
 BEGIN
