@@ -78,9 +78,11 @@ CREATE TABLE IF NOT EXISTS Staff (
 -- =====================================
 -- Loyalty Program
 -- =====================================
+-- LoyaltyProgram - One loyalty program per customer
+-- =====================================
 CREATE TABLE IF NOT EXISTS LoyaltyProgram (
     program_id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT UNIQUE NOT NULL, -- One loyalty program per customer
+    customer_id INT UNIQUE NOT NULL,
     points_balance INT DEFAULT 0,
     membership_tier VARCHAR(20) DEFAULT 'Bronze',
     date_joined DATE NOT NULL,
@@ -197,9 +199,10 @@ CREATE TABLE IF NOT EXISTS PromoOffer (
 -- =====================================
 -- Review Ratings
 -- =====================================
+-- One review per rental
 CREATE TABLE IF NOT EXISTS ReviewRatings (
     review_id INT AUTO_INCREMENT PRIMARY KEY,
-    rental_id INT UNIQUE NOT NULL, -- One review per rental
+    rental_id INT UNIQUE NOT NULL,
     rating_score DECIMAL(2,1) CHECK (rating_score >= 1.0 AND rating_score <= 5.0),
     review_text TEXT,
     review_date DATE NOT NULL,

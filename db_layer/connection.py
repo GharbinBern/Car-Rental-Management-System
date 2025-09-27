@@ -18,6 +18,7 @@ def create_database_if_not_exists():
 def connect_db():
     return mysql.connector.connect(
         host="localhost",
+        allow_local_infile=True,
         user="root",
         password="Sevenbern101",
         database="car_rental_db"
