@@ -1,22 +1,94 @@
 # Car Rental Management System
 
-A Python command-line car rental system backed by MySQL. The project provides basic rental operations, customer management, promotions, and branch reporting. It was built as a small demo/utility and is structured to be easily extended.
+A full-stack car rental management system with a FastAPI backend, React frontend, and MySQL database. The system provides comprehensive rental operations, customer management, vehicle maintenance tracking, loyalty programs, promotions, and detailed reporting.
 
-## Quick overview
-- CLI-based interface (entry point: `run.py`) that calls business logic in `business_logic/`.
-- Database access via helper in `db_layer/`.
-- SQL schema and sample data in `sql/` (including views and seed data).
+## Features
 
-## Technologies
-- Python 3.10+ (tested with 3.11+)
-- MySQL (8.x recommended)
-- Minimal Python stdlib and MySQL connector (see dependencies)
+- User Authentication & Authorization
+- Vehicle Management
+- Customer Management
+- Rental Operations
+- Maintenance Tracking
+- Loyalty Program
+- Promotional Offers
+- Review System
+- Detailed Reporting
 
-## What the repo contains
-- `run.py` — CLI entrypoint
-- `business_logic/` — modules for vehicles, customers, rentals, reports, promos
-- `db_layer/` — DB connection and setup helpers
-- `sql/` — `schema.sql`, `insert_data.sql`, `views.sql` (schema + seeds + views)
+## Tech Stack
+
+### Backend
+- FastAPI (Python 3.10+)
+- MySQL 8.x
+- JWT Authentication
+- Pydantic for data validation
+
+### Frontend
+- React 18
+- Tailwind CSS
+- React Router for navigation
+- Axios for API communication
+
+## Project Structure
+
+```
+.
+├── api/                    # FastAPI backend
+│   ├── routes/            # API endpoints
+│   ├── schemas.py         # Pydantic models
+│   └── config.py          # Configuration
+├── frontend/              # React frontend
+│   ├── src/
+│   │   ├── pages/        # React components
+│   │   ├── contexts/     # React contexts
+│   │   └── services/     # API services
+│   └── package.json
+├── db_layer/             # Database management
+├── sql/                  # SQL scripts
+└── README.md
+```
+
+## Getting Started
+
+### Prerequisites
+- Python 3.10+
+- Node.js 16+
+- MySQL 8.x
+
+### Backend Setup
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the backend
+uvicorn api.main:app --reload
+```
+
+### Frontend Setup
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+### Database Setup
+```bash
+# Configure your database connection in db_layer/connection.py
+python -c "from db_layer.setup import initialize_database; initialize_database()"
+```
+
+## API Documentation
+
+Once the backend is running, you can access the API documentation at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ## Setup (local)
 1. Install Python 3.10+.
@@ -83,3 +155,27 @@ The CLI menu supports:
 
 ## Contact / Contribution
 PRs welcome. Open issues if you find bugs or have feature requests.
+
+## Sprint 1: FastAPI wrapper and React + Vite frontend
+
+This repo now contains a small FastAPI wrapper under `api/` and a React + Vite frontend scaffold in `frontend/` (Tailwind CSS).
+
+Run the API (requires Python 3.10+):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install fastapi uvicorn
+uvicorn api.main:app --reload
+```
+
+Run the frontend (requires Node 18+ / npm):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend expects the API to run on http://localhost:8000 by default.
+
