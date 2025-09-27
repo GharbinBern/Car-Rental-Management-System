@@ -1,0 +1,62 @@
+# Python
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyi
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+dist/
+build/
+egg-info/
+
+# Node
+node_modules/
+/.vite/
+/.parcel-cache/
+dist/
+build/
+
+# Logs
+*.log
+frontend-dev.log
+uvicorn.log
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+.AppleDouble
+._*
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Mac specific
+.Spotlight-V100
+.Trashes
+
+# Python compiled artifacts
+pip-log.txt
+pip-delete-this-directory.txt
+
+# JetBrains
+.idea/
+
+# Misc
+coverage.xml
+local_settings.py
+instance/
