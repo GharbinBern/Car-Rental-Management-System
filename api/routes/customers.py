@@ -12,9 +12,9 @@ class CustomerBase(BaseModel):
     first_name: str = Field(..., min_length=2, max_length=50)
     last_name: str = Field(..., min_length=2, max_length=50)
     email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, pattern='^\\+?1?\\d{9,15}$')
+    phone: Optional[str] = Field(None, pattern='^\\+?1?[\\d\\-\\(\\)\\s]{9,15}$')  # Allow hyphens, spaces, parentheses
     date_of_birth: Optional[str] = None  # Format: YYYY-MM-DD
-    license_number: str = Field(..., min_length=5, max_length=50)
+    license_number: Optional[str] = Field(None, max_length=50)  # Make optional, some customers might not have it
     country_of_residence: Optional[str] = Field(None, max_length=50)
     is_loyalty_member: bool = False
 
@@ -32,7 +32,7 @@ class CustomerUpdate(BaseModel):
 
 
 class CustomerOut(CustomerBase):
-    customer_id: int
+    customer_code: str
 
 
 @router.get("/", response_model=List[CustomerOut])
@@ -45,7 +45,7 @@ def get_customers(search: Optional[str] = None):
     cursor = db.cursor()
     
     query = """
-        SELECT customer_id, name, email, phone, license_number, address
+        SELECT customer_code, first_name, last_name, email, phone, license_number, country_of_residence, is_loyalty_member, date_of_birth
         FROM Customer
         WHERE 1=1
     """
@@ -71,16 +71,15 @@ def get_customers(search: Optional[str] = None):
 
     return [
         CustomerOut(
-            customer_id=row[0],
-            customer_code=row[1],
-            first_name=row[2],
-            last_name=row[3],
-            email=row[4],
-            phone=row[5],
-            date_of_birth=row[6].strftime('%Y-%m-%d') if row[6] else None,
-            license_number=row[7],
-            country_of_residence=row[8],
-            is_loyalty_member=row[9]
+            customer_code=row[0],
+            first_name=row[1],
+            last_name=row[2],
+            email=row[3],
+            phone=row[4],
+            license_number=row[5],
+            country_of_residence=row[6],
+            is_loyalty_member=bool(row[7]),
+            date_of_birth=row[8].strftime('%Y-%m-%d') if row[8] else None
         )
         for row in rows
     ]

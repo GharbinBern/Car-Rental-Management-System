@@ -11,21 +11,27 @@ router = APIRouter()
 class VehicleBase(BaseModel):
     brand: str
     model: str
-    year: int = Field(..., ge=1900, le=datetime.now().year + 1)
-    status: str = Field(default="available", pattern="^(available|rented|maintenance)$")
+    type: Optional[str] = None
+    fuel_type: Optional[str] = None
+    transmission: Optional[str] = None
+    status: str = Field(default="available")
     daily_rate: float = Field(..., ge=0)
+    seating_capacity: Optional[int] = None
 
 
 class VehicleCreate(VehicleBase):
     vehicle_code: str = Field(..., min_length=2, max_length=10)
 
 
-class VehicleUpdate(VehicleBase):
+class VehicleUpdate(BaseModel):
     brand: Optional[str] = None
     model: Optional[str] = None
-    year: Optional[int] = Field(None, ge=1900, le=datetime.now().year + 1)
-    status: Optional[str] = Field(None, pattern="^(available|rented|maintenance)$")
+    type: Optional[str] = None
+    fuel_type: Optional[str] = None
+    transmission: Optional[str] = None
+    status: Optional[str] = None
     daily_rate: Optional[float] = Field(None, ge=0)
+    seating_capacity: Optional[int] = None
 
 
 class VehicleOut(VehicleBase):
@@ -45,7 +51,7 @@ def get_vehicles(
     cursor = db.cursor()
     
     query = """
-        SELECT vehicle_code, brand, model, year, status, daily_rate 
+        SELECT vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
         FROM Vehicle
         WHERE 1=1
     """
@@ -76,9 +82,12 @@ def get_vehicles(
             vehicle_code=row[0],
             brand=row[1],
             model=row[2],
-            year=row[3],
-            status=row[4],
-            daily_rate=float(row[5]) if row[5] is not None else None
+            type=row[3],
+            fuel_type=row[4],
+            transmission=row[5],
+            status=row[6],
+            daily_rate=float(row[7]) if row[7] is not None else 0.0,
+            seating_capacity=row[8]
         )
         for row in rows
     ]
