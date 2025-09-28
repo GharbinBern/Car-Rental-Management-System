@@ -1,5 +1,7 @@
 {
     "python.analysis.extraPaths": [
         "./db_layer"
-    ]
+    ],
+    "python.defaultInterpreter": "/Users/gharbinbern/Desktop/Car-Rental-Management-System-1/.venv/bin/python",
+    "python.pythonPath": "/Users/gharbinbern/Desktop/Car-Rental-Management-System-1/.venv/bin/python"
 }
