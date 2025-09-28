@@ -4,13 +4,24 @@ const API_URL = 'http://localhost:8000/api'
 
 export const login = async (username, password) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/login`, {
-      username,
-      password
+    // Create form data for OAuth2PasswordRequestForm
+    const formData = new FormData()
+    formData.append('username', username)
+    formData.append('password', password)
+    
+    const response = await axios.post(`${API_URL}/auth/login`, formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     })
     
     if (response.data.access_token) {
-      localStorage.setItem('user', JSON.stringify(response.data))
+      // Store user data with additional info
+      const userData = {
+        ...response.data,
+        username: username
+      }
+      localStorage.setItem('user', JSON.stringify(userData))
     }
     
     return response.data
