@@ -15,14 +15,14 @@ def setup_database():
     try:
         # Create database if it doesn't exist
         create_database_if_not_exists()
-        print("✓ Database created/verified")
+        print("Database created/verified")
         
         # Initialize tables, views, and sample data
         init_database()
-        print("✓ Database initialization completed")
+        print("Database initialization completed")
         
     except Exception as e:
-        print(f"❌ Database setup failed: {e}")
+        print(f"Database setup failed: {e}")
         sys.exit(1)
 
 def run_cli():
@@ -33,7 +33,7 @@ def run_cli():
     except KeyboardInterrupt:
         print("\n\nGoodbye!")
     except Exception as e:
-        print(f"❌ CLI error: {e}")
+        print(f"CLI error: {e}")
         sys.exit(1)
 
 def main():
