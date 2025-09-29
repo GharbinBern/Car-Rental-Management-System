@@ -11,13 +11,13 @@ router = APIRouter()
 
 class RentalCreate(BaseModel):
     customer_id: int
-    vehicle_code: str
-    start_date: date
-    expected_end_date: date
+    vehicle_id: int
+    pickup_datetime: str
+    return_datetime: str
 
 
 class RentalUpdate(BaseModel):
-    end_date: date = Field(...)
+    actual_return_datetime: str = Field(...)
     additional_charges: float = Field(default=0, ge=0)
     notes: Optional[str] = None
 
@@ -26,12 +26,11 @@ class RentalOut(BaseModel):
     rental_id: int
     customer_id: int
     customer_name: str
-    vehicle_code: str
     vehicle_info: str
     daily_rate: float
-    start_date: date
-    expected_end_date: date
-    end_date: Optional[date] = None
+    start_date: str  # mapped from pickup_date
+    expected_end_date: str  # mapped from return_date  
+    end_date: Optional[str] = None  # mapped from actual_return_date
     status: str
     total_cost: Optional[float] = None
 
@@ -50,21 +49,18 @@ def get_rentals(
         SELECT 
             r.rental_id,
             r.customer_id,
-            c.name as customer_name,
-            r.vehicle_code,
+            CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+            r.vehicle_id,
             CONCAT(v.brand, ' ', v.model) as vehicle_info,
             v.daily_rate,
-            r.start_date,
-            r.expected_end_date,
-            r.end_date,
-            CASE
-                WHEN r.end_date IS NULL THEN 'ongoing'
-                ELSE 'completed'
-            END as status,
+            DATE(r.pickup_datetime) as pickup_date,
+            DATE(r.return_datetime) as return_date,
+            DATE(r.actual_return_datetime) as actual_return_date,
+            r.status,
             r.total_cost
         FROM Rental r
         JOIN Customer c ON r.customer_id = c.customer_id
-        JOIN Vehicle v ON r.vehicle_code = v.vehicle_code
+        JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
         WHERE 1=1
     """
     params = []
@@ -80,10 +76,10 @@ def get_rentals(
         params.append(customer_id)
         
     if vehicle_code:
-        query += " AND r.vehicle_code = %s"
+        query += " AND v.vehicle_id = %s"
         params.append(vehicle_code)
         
-    query += " ORDER BY r.start_date DESC"
+    query += " ORDER BY r.pickup_datetime DESC"
     
     cursor.execute(query, params)
     rentals = cursor.fetchall()
@@ -95,12 +91,11 @@ def get_rentals(
             rental_id=r[0],
             customer_id=r[1],
             customer_name=r[2],
-            vehicle_code=r[3],
             vehicle_info=r[4],
             daily_rate=float(r[5]),
-            start_date=r[6],
-            expected_end_date=r[7],
-            end_date=r[8],
+            start_date=str(r[6]) if r[6] else None,
+            expected_end_date=str(r[7]) if r[7] else None,
+            end_date=str(r[8]) if r[8] is not None else None,
             status=r[9],
             total_cost=float(r[10]) if r[10] is not None else None
         )
@@ -118,21 +113,19 @@ def get_rental(rental_id: int):
         SELECT 
             r.rental_id,
             r.customer_id,
-            c.name as customer_name,
-            r.vehicle_code,
+            CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+            r.vehicle_id,
             CONCAT(v.brand, ' ', v.model) as vehicle_info,
             v.daily_rate,
-            r.start_date,
-            r.expected_end_date,
-            r.end_date,
-            CASE
-                WHEN r.end_date IS NULL THEN 'ongoing'
-                ELSE 'completed'
+            DATE(r.pickup_datetime) as pickup_date,
+            DATE(r.return_datetime) as return_date,
+            DATE(r.actual_return_datetime) as actual_return_date,
+            r.status
             END as status,
             r.total_cost
         FROM Rental r
         JOIN Customer c ON r.customer_id = c.customer_id
-        JOIN Vehicle v ON r.vehicle_code = v.vehicle_code
+        JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
         WHERE r.rental_id = %s
     """, (rental_id,))
     
@@ -147,12 +140,11 @@ def get_rental(rental_id: int):
         rental_id=rental[0],
         customer_id=rental[1],
         customer_name=rental[2],
-        vehicle_code=rental[3],
         vehicle_info=rental[4],
         daily_rate=float(rental[5]),
-        start_date=rental[6],
-        expected_end_date=rental[7],
-        end_date=rental[8],
+        start_date=str(rental[6]) if rental[6] else None,
+        expected_end_date=str(rental[7]) if rental[7] else None,
+        end_date=str(rental[8]) if rental[8] is not None else None,
         status=rental[9],
         total_cost=float(rental[10]) if rental[10] is not None else None
     )
@@ -217,7 +209,7 @@ def create_rental(rental: RentalCreate):
             SELECT 
                 r.rental_id,
                 r.customer_id,
-                c.name as customer_name,
+                CONCAT(c.first_name, ' ', c.last_name) as customer_name,
                 r.vehicle_code,
                 CONCAT(v.brand, ' ', v.model) as vehicle_info,
                 v.daily_rate,
@@ -303,7 +295,7 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
             SELECT 
                 r.rental_id,
                 r.customer_id,
-                c.name as customer_name,
+                CONCAT(c.first_name, ' ', c.last_name) as customer_name,
                 r.vehicle_code,
                 CONCAT(v.brand, ' ', v.model) as vehicle_info,
                 v.daily_rate,

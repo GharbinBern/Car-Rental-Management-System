@@ -32,6 +32,7 @@ class CustomerUpdate(BaseModel):
 
 
 class CustomerOut(CustomerBase):
+    customer_id: int
     customer_code: str
 
 
@@ -45,7 +46,7 @@ def get_customers(search: Optional[str] = None):
     cursor = db.cursor()
     
     query = """
-        SELECT customer_code, first_name, last_name, email, phone, license_number, country_of_residence, is_loyalty_member, date_of_birth
+        SELECT customer_id, customer_code, first_name, last_name, email, phone, license_number, country_of_residence, is_loyalty_member, date_of_birth
         FROM Customer
         WHERE 1=1
     """
@@ -71,15 +72,16 @@ def get_customers(search: Optional[str] = None):
 
     return [
         CustomerOut(
-            customer_code=row[0],
-            first_name=row[1],
-            last_name=row[2],
-            email=row[3],
-            phone=row[4],
-            license_number=row[5],
-            country_of_residence=row[6],
-            is_loyalty_member=bool(row[7]),
-            date_of_birth=row[8].strftime('%Y-%m-%d') if row[8] else None
+            customer_id=row[0],
+            customer_code=row[1],
+            first_name=row[2],
+            last_name=row[3],
+            email=row[4],
+            phone=row[5],
+            license_number=row[6],
+            country_of_residence=row[7],
+            is_loyalty_member=bool(row[8]),
+            date_of_birth=row[9].strftime('%Y-%m-%d') if row[9] else None
         )
         for row in rows
     ]

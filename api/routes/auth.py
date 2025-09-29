@@ -3,17 +3,20 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from db_layer.connection import connect_db
+from api.core.config import settings
 
-# JWT configuration
-SECRET_KEY = "your-secret-key-here"  # In production, use a secure secret key
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+# JWT configuration (from settings)
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES or (60 * 24)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import hashlib
+# Temporary simple hash for development - NOT for production
+def simple_hash(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter()
@@ -40,41 +43,62 @@ class UserInDB(User):
 
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return simple_hash(plain_password) == hashed_password
+    except Exception as e:
+        return False
 
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    try:
+        return simple_hash(password)
+    except Exception as e:
+        return None
 
 
 def get_user(username: str):
-    db = connect_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "SELECT username, email, full_name, disabled, password FROM users WHERE username = %s",
-        (username,)
-    )
-    user = cursor.fetchone()
-    cursor.close()
-    db.close()
-
-    if user:
-        return UserInDB(
-            username=user[0],
-            email=user[1],
-            full_name=user[2],
-            disabled=user[3],
-            hashed_password=user[4]
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute(
+            "SELECT username, email, full_name, disabled, password FROM users WHERE username = %s",
+            (username,)
         )
+        user = cursor.fetchone()
+        
+        if user:
+            return UserInDB(
+                username=user[0],
+                email=user[1],
+                full_name=user[2],
+                disabled=user[3],
+                hashed_password=user[4]
+            )
+        return None
+    except Exception as e:
+        return None
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'db' in locals():
+            db.close()
 
 
 def authenticate_user(username: str, password: str):
-    user = get_user(username)
-    if not user:
+    try:
+        user = get_user(username)
+        if not user:
+            return False
+        
+        # Truncate password if too long for bcrypt
+        if len(password.encode('utf-8')) > 72:
+            password = password[:72]
+            
+        if not verify_password(password, user.hashed_password):
+            return False
+        return user
+    except Exception as e:
         return False
-    if not verify_password(password, user.hashed_password):
-        return False
-    return user
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -116,19 +140,70 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        # Quick validation
+        if not form_data.username or not form_data.password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username and password are required"
+            )
+        
+        user = authenticate_user(form_data.username, form_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during login"
+        )
 
+
+@router.get("/test")
+async def test_auth():
+    """Quick test endpoint to check API responsiveness"""
+    return {"message": "API is responding", "timestamp": datetime.utcnow().isoformat()}
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint with performance metrics"""
+    import time
+    start_time = time.time()
+    
+    try:
+        # Test database connection
+        user = get_user("admin")
+        db_status = "connected" if user else "no_admin_user"
+        db_time = time.time() - start_time
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": {
+                "status": db_status,
+                "response_time_ms": round(db_time * 1000, 2)
+            },
+            "api_response_time_ms": round((time.time() - start_time) * 1000, 2)
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
+            "api_response_time_ms": round((time.time() - start_time) * 1000, 2)
+        }
 
 @router.post("/register", response_model=User)
 async def register_user(username: str, password: str, email: str, full_name: str):

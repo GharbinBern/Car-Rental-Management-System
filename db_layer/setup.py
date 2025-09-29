@@ -9,7 +9,6 @@ This module handles the complete database initialization process including:
 '''
 
 import logging
-import os
 from pathlib import Path
 from contextlib import contextmanager
 from typing import List, Optional
@@ -28,52 +27,7 @@ SETUP_SCRIPTS = [
     'insert_data.sql' # Sample data last
 ]
 
-def execute_sql_file(cursor, file_path: str):
-    """Execute a SQL file."""
-    with open(file_path, 'r') as f:
-        current_statement = []
-        for line in f:
-            # Skip comments and empty lines
-            if line.strip() and not line.startswith('--'):
-                current_statement.append(line.strip())
-                if line.strip().endswith(';'):
-                    # Execute the complete statement
-                    try:
-                        sql = ' '.join(current_statement)
-                        cursor.execute(sql)
-                    except Exception as e:
-                        logger.error(f"Error executing SQL: {sql[:100]}...")
-                        raise
-                    current_statement = []
-
-def initialize_database():
-    """Initialize the database with all required tables and initial data."""
-    logger.info("Starting database initialization...")
-    
-    # Get the SQL directory path
-    sql_dir = Path(__file__).parent.parent / 'sql'
-    
-    # Connect to the database
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        # Execute each setup script in order
-        for script in SETUP_SCRIPTS:
-            script_path = sql_dir / script
-            logger.info(f"Executing {script}...")
-            execute_sql_file(cursor, str(script_path))
-            conn.commit()
-        
-        logger.info("Database initialization completed successfully!")
-    
-    except Exception as e:
-        logger.error(f"Error during database initialization: {e}")
-        conn.rollback()
-        raise
-    finally:
-        cursor.close()
-        conn.close()
+ 
 
 
 class DatabaseSetupError(Exception):
