@@ -1,32 +1,49 @@
 import axios from 'axios'
 
-const API_URL = 'http://localhost:8000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 export const login = async (username, password) => {
   try {
-    // Create form data for OAuth2PasswordRequestForm
-    const formData = new FormData()
-    formData.append('username', username)
-    formData.append('password', password)
+    // Create URLSearchParams for faster form encoding
+    const params = new URLSearchParams()
+    params.append('username', username.trim())
+    params.append('password', password)
     
-    const response = await axios.post(`${API_URL}/auth/login`, formData, {
+    const response = await axios.post(`${API_URL}/auth/login`, params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      },
+      timeout: 10000 // 10 second timeout
     })
     
     if (response.data.access_token) {
       // Store user data with additional info
       const userData = {
         ...response.data,
-        username: username
+        username: username.trim(),
+        login_time: new Date().toISOString()
       }
       localStorage.setItem('user', JSON.stringify(userData))
+      return userData
     }
     
-    return response.data
+    throw new Error('No access token received')
   } catch (error) {
-    throw error.response?.data?.detail || 'Login failed'
+    console.error('Login error:', error)
+    
+    if (error.code === 'ECONNABORTED') {
+      throw 'Connection timeout. Please check your network.'
+    }
+    
+    if (error.response?.status === 401) {
+      throw 'Invalid username or password'
+    }
+    
+    if (error.response?.status >= 500) {
+      throw 'Server error. Please try again later.'
+    }
+    
+    throw error.response?.data?.detail || error.message || 'Login failed'
   }
 }
 

@@ -1,10 +1,12 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
-import { AuthProvider, RequireAuth, useAuth } from './contexts/AuthContext'
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Dashboard from './pages/Dashboard'
 import Vehicles from './pages/Vehicles'
 import Customers from './pages/Customers'
 import Rentals from './pages/Rentals'
+import Maintenance from './pages/Maintenance'
+import Reports from './pages/Reports'
 import Login from './pages/Login'
 
 function NavLink({ to, children }) {
@@ -39,6 +41,8 @@ function Header() {
               <NavLink to="/vehicles">Vehicles</NavLink>
               <NavLink to="/customers">Customers</NavLink>
               <NavLink to="/rentals">Rentals</NavLink>
+              <NavLink to="/maintenance">Maintenance</NavLink>
+              <NavLink to="/reports">Reports</NavLink>
             </nav>
           </div>
           <div className="flex items-center">
@@ -53,6 +57,17 @@ function Header() {
       </div>
     </header>
   )
+}
+
+function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return children
 }
 
 function ProtectedLayout({ children }) {
@@ -73,45 +88,64 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           
-          {/* Protected Routes */}
           <Route
             path="/"
             element={
-              <RequireAuth>
+              <ProtectedRoute>
                 <ProtectedLayout>
                   <Dashboard />
                 </ProtectedLayout>
-              </RequireAuth>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/vehicles"
             element={
-              <RequireAuth>
+              <ProtectedRoute>
                 <ProtectedLayout>
                   <Vehicles />
                 </ProtectedLayout>
-              </RequireAuth>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/customers"
             element={
-              <RequireAuth>
+              <ProtectedRoute>
                 <ProtectedLayout>
                   <Customers />
                 </ProtectedLayout>
-              </RequireAuth>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/rentals"
             element={
-              <RequireAuth>
+              <ProtectedRoute>
                 <ProtectedLayout>
                   <Rentals />
                 </ProtectedLayout>
-              </RequireAuth>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/maintenance"
+            element={
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <Maintenance />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <Reports />
+                </ProtectedLayout>
+              </ProtectedRoute>
             }
           />
         </Routes>

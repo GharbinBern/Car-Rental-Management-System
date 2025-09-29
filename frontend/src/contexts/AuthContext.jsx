@@ -1,18 +1,22 @@
 import React, { createContext, useState, useContext, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { getCurrentUser, login as authLogin, logout as authLogout } from '../services/auth'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(getCurrentUser())
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const user = getCurrentUser()
-    if (user) {
-      setUser(user)
+    try {
+      const currentUser = getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
+      }
+    } catch (error) {
+      console.error('Error loading user:', error)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -20,10 +24,7 @@ export function AuthProvider({ children }) {
     try {
       const userData = await authLogin(username, password)
       setUser(userData)
-      
-      // Navigate to the page they tried to visit or to dashboard
-      const origin = location.state?.from?.pathname || '/'
-      navigate(origin)
+      return userData
     } catch (error) {
       throw error
     }
@@ -32,14 +33,22 @@ export function AuthProvider({ children }) {
   const logout = () => {
     authLogout()
     setUser(null)
-    navigate('/login')
   }
 
   const value = {
     user,
     login,
     logout,
+    loading,
     isAuthenticated: !!user
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (

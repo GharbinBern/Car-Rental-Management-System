@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
+import { apiService } from '../services/api'
 
 export default function Customers() {
   const [customers, setCustomers] = useState([])
@@ -10,7 +10,7 @@ export default function Customers() {
 
   const fetchCustomers = () => {
     setLoading(true)
-    axios.get('http://localhost:8000/api/customers/')
+    apiService.getCustomers()
       .then(res => setCustomers(res.data))
       .catch(err => { console.error(err); setCustomers([]) })
       .finally(() => setLoading(false))
@@ -22,7 +22,7 @@ export default function Customers() {
 
   const handleAddCustomer = async (customerData) => {
     try {
-      await axios.post('http://localhost:8000/api/customers/', customerData)
+      await apiService.addCustomer(customerData)
       fetchCustomers()
       setShowAddModal(false)
     } catch (err) {
@@ -33,7 +33,7 @@ export default function Customers() {
 
   const handleUpdateCustomer = async (customerId, updates) => {
     try {
-      await axios.put(`http://localhost:8000/api/customers/${customerId}`, updates)
+      await apiService.updateCustomer(customerId, updates)
       fetchCustomers()
       setEditingCustomer(null)
     } catch (err) {
@@ -43,9 +43,9 @@ export default function Customers() {
   }
 
   const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
+    `${c.first_name} ${c.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.phone?.includes(searchTerm)
   )
 
   if (loading) return <div className="p-4">Loading customers...</div>
@@ -86,7 +86,7 @@ export default function Customers() {
           <tbody>
             {filteredCustomers.map(customer => (
               <tr key={customer.customer_id} className="border-t">
-                <td className="p-3">{customer.name}</td>
+                <td className="p-3">{`${customer.first_name} ${customer.last_name}`}</td>
                 <td className="p-3">{customer.email}</td>
                 <td className="p-3">{customer.phone}</td>
                 <td className="p-3">{customer.license_number}</td>
@@ -126,11 +126,12 @@ export default function Customers() {
 
 function CustomerModal({ customer, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    name: customer?.name || '',
+    first_name: customer?.first_name || '',
+    last_name: customer?.last_name || '',
     email: customer?.email || '',
     phone: customer?.phone || '',
     license_number: customer?.license_number || '',
-    address: customer?.address || ''
+    country_of_residence: customer?.country_of_residence || ''
   })
 
   const handleSubmit = (e) => {
@@ -147,11 +148,21 @@ function CustomerModal({ customer, onClose, onSave }) {
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Full Name</label>
+              <label className="block text-sm font-medium mb-1">First Name</label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                value={formData.first_name}
+                onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                className="border p-2 rounded w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name</label>
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => setFormData({...formData, last_name: e.target.value})}
                 className="border p-2 rounded w-full"
                 required
               />
@@ -163,7 +174,6 @@ function CustomerModal({ customer, onClose, onSave }) {
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="border p-2 rounded w-full"
-                required
               />
             </div>
             <div>
@@ -173,7 +183,6 @@ function CustomerModal({ customer, onClose, onSave }) {
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 className="border p-2 rounded w-full"
-                required
               />
             </div>
             <div>
@@ -183,17 +192,15 @@ function CustomerModal({ customer, onClose, onSave }) {
                 value={formData.license_number}
                 onChange={(e) => setFormData({...formData, license_number: e.target.value})}
                 className="border p-2 rounded w-full"
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <textarea
-                value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
+              <label className="block text-sm font-medium mb-1">Country</label>
+              <input
+                type="text"
+                value={formData.country_of_residence}
+                onChange={(e) => setFormData({...formData, country_of_residence: e.target.value})}
                 className="border p-2 rounded w-full"
-                rows={3}
-                required
               />
             </div>
           </div>
