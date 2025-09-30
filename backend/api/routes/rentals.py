@@ -26,11 +26,12 @@ class RentalOut(BaseModel):
     rental_id: int
     customer_id: int
     customer_name: str
+    vehicle_id: int
     vehicle_info: str
     daily_rate: float
-    start_date: str  # mapped from pickup_date
-    expected_end_date: str  # mapped from return_date  
-    end_date: Optional[str] = None  # mapped from actual_return_date
+    pickup_date: str
+    expected_return_date: str
+    actual_return_date: Optional[str] = None
     status: str
     total_cost: Optional[float] = None
 
@@ -54,7 +55,7 @@ def get_rentals(
             CONCAT(v.brand, ' ', v.model) as vehicle_info,
             v.daily_rate,
             DATE(r.pickup_datetime) as pickup_date,
-            DATE(r.return_datetime) as return_date,
+            DATE(r.return_datetime) as expected_return_date,
             DATE(r.actual_return_datetime) as actual_return_date,
             r.status,
             r.total_cost
@@ -67,9 +68,9 @@ def get_rentals(
     
     if status:
         if status == 'ongoing':
-            query += " AND r.end_date IS NULL"
+            query += " AND r.actual_return_datetime IS NULL"
         elif status == 'completed':
-            query += " AND r.end_date IS NOT NULL"
+            query += " AND r.actual_return_datetime IS NOT NULL"
     
     if customer_id:
         query += " AND r.customer_id = %s"
@@ -91,11 +92,12 @@ def get_rentals(
             rental_id=r[0],
             customer_id=r[1],
             customer_name=r[2],
+            vehicle_id=r[3],
             vehicle_info=r[4],
             daily_rate=float(r[5]),
-            start_date=str(r[6]) if r[6] else None,
-            expected_end_date=str(r[7]) if r[7] else None,
-            end_date=str(r[8]) if r[8] is not None else None,
+            pickup_date=str(r[6]) if r[6] else None,
+            expected_return_date=str(r[7]) if r[7] else None,
+            actual_return_date=str(r[8]) if r[8] is not None else None,
             status=r[9],
             total_cost=float(r[10]) if r[10] is not None else None
         )
@@ -120,8 +122,7 @@ def get_rental(rental_id: int):
             DATE(r.pickup_datetime) as pickup_date,
             DATE(r.return_datetime) as return_date,
             DATE(r.actual_return_datetime) as actual_return_date,
-            r.status
-            END as status,
+            r.status,
             r.total_cost
         FROM Rental r
         JOIN Customer c ON r.customer_id = c.customer_id
@@ -140,11 +141,12 @@ def get_rental(rental_id: int):
         rental_id=rental[0],
         customer_id=rental[1],
         customer_name=rental[2],
+        vehicle_id=rental[3],
         vehicle_info=rental[4],
         daily_rate=float(rental[5]),
-        start_date=str(rental[6]) if rental[6] else None,
-        expected_end_date=str(rental[7]) if rental[7] else None,
-        end_date=str(rental[8]) if rental[8] is not None else None,
+        pickup_date=str(rental[6]) if rental[6] else None,
+        expected_return_date=str(rental[7]) if rental[7] else None,
+        actual_return_date=str(rental[8]) if rental[8] is not None else None,
         status=rental[9],
         total_cost=float(rental[10]) if rental[10] is not None else None
     )
@@ -157,7 +159,7 @@ def create_rental(rental: RentalCreate):
     cursor = db.cursor()
     
     # Verify customer exists
-    cursor.execute("SELECT name FROM Customer WHERE customer_id = %s", (rental.customer_id,))
+    cursor.execute("SELECT CONCAT(first_name, ' ', last_name) FROM Customer WHERE customer_id = %s", (rental.customer_id,))
     customer = cursor.fetchone()
     if not customer:
         cursor.close()
@@ -166,8 +168,8 @@ def create_rental(rental: RentalCreate):
     
     # Verify vehicle exists and is available
     cursor.execute(
-        "SELECT CONCAT(brand, ' ', model), daily_rate, status FROM Vehicle WHERE vehicle_code = %s",
-        (rental.vehicle_code,)
+        "SELECT CONCAT(brand, ' ', model), daily_rate, status FROM Vehicle WHERE vehicle_id = %s",
+        (rental.vehicle_id,)
     )
     vehicle = cursor.fetchone()
     if not vehicle:
@@ -181,25 +183,40 @@ def create_rental(rental: RentalCreate):
         raise HTTPException(status_code=400, detail="Vehicle is not available")
     
     try:
-        # Create rental
+        # Calculate total cost based on rental duration and daily rate
+        from datetime import datetime
+        pickup_dt = datetime.fromisoformat(rental.pickup_datetime.replace('Z', '+00:00'))
+        return_dt = datetime.fromisoformat(rental.return_datetime.replace('Z', '+00:00'))
+        duration_days = max(1, (return_dt - pickup_dt).days)
+        daily_rate = float(vehicle[1])
+        estimated_total_cost = duration_days * daily_rate
+        
+        # Use default branch ID (branch should exist in database)
+        default_branch_id = 1
+        
+        # Create rental with calculated total cost
         cursor.execute("""
             INSERT INTO Rental (
-                customer_id, vehicle_code, start_date, expected_end_date
-            ) VALUES (%s, %s, %s, %s)
-            RETURNING rental_id
+                customer_id, vehicle_id, pickup_branch_id, return_branch_id, 
+                pickup_datetime, return_datetime, status, total_cost
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             rental.customer_id,
-            rental.vehicle_code,
-            rental.start_date,
-            rental.expected_end_date
+            rental.vehicle_id,
+            default_branch_id,
+            default_branch_id,
+            rental.pickup_datetime,
+            rental.return_datetime,
+            'Active',
+            estimated_total_cost
         ))
         
-        rental_id = cursor.fetchone()[0]
+        rental_id = cursor.lastrowid
         
         # Update vehicle status
         cursor.execute(
-            "UPDATE Vehicle SET status = 'rented' WHERE vehicle_code = %s",
-            (rental.vehicle_code,)
+            "UPDATE Vehicle SET status = 'Rented' WHERE vehicle_id = %s",
+            (rental.vehicle_id,)
         )
         
         db.commit()
@@ -210,17 +227,17 @@ def create_rental(rental: RentalCreate):
                 r.rental_id,
                 r.customer_id,
                 CONCAT(c.first_name, ' ', c.last_name) as customer_name,
-                r.vehicle_code,
+                r.vehicle_id,
                 CONCAT(v.brand, ' ', v.model) as vehicle_info,
                 v.daily_rate,
-                r.start_date,
-                r.expected_end_date,
-                r.end_date,
-                'ongoing' as status,
+                DATE(r.pickup_datetime) as pickup_date,
+                DATE(r.return_datetime) as expected_return_date,
+                DATE(r.actual_return_datetime) as actual_return_date,
+                r.status,
                 r.total_cost
             FROM Rental r
             JOIN Customer c ON r.customer_id = c.customer_id
-            JOIN Vehicle v ON r.vehicle_code = v.vehicle_code
+            JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
             WHERE r.rental_id = %s
         """, (rental_id,))
         
@@ -237,12 +254,12 @@ def create_rental(rental: RentalCreate):
         rental_id=new_rental[0],
         customer_id=new_rental[1],
         customer_name=new_rental[2],
-        vehicle_code=new_rental[3],
+        vehicle_id=new_rental[3],
         vehicle_info=new_rental[4],
         daily_rate=float(new_rental[5]),
-        start_date=new_rental[6],
-        expected_end_date=new_rental[7],
-        end_date=new_rental[8],
+        pickup_date=str(new_rental[6]) if new_rental[6] is not None else None,
+        expected_return_date=str(new_rental[7]) if new_rental[7] is not None else None,
+        actual_return_date=str(new_rental[8]) if new_rental[8] is not None else None,
         status=new_rental[9],
         total_cost=float(new_rental[10]) if new_rental[10] is not None else None
     )
@@ -256,10 +273,10 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
     
     # Check if rental exists and is ongoing
     cursor.execute("""
-        SELECT r.vehicle_code, r.start_date, v.daily_rate
+        SELECT r.vehicle_id, DATE(r.pickup_datetime), v.daily_rate
         FROM Rental r
-        JOIN Vehicle v ON r.vehicle_code = v.vehicle_code
-        WHERE r.rental_id = %s AND r.end_date IS NULL
+        JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
+        WHERE r.rental_id = %s AND r.actual_return_datetime IS NULL
     """, (rental_id,))
     
     rental = cursor.fetchone()
@@ -268,24 +285,26 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
         db.close()
         raise HTTPException(status_code=404, detail="Rental not found or already completed")
     
-    vehicle_code, start_date, daily_rate = rental
+    vehicle_id, pickup_date, daily_rate = rental
     
-    # Calculate total cost
-    days_rented = (return_data.end_date - start_date).days + 1
+    # Calculate total cost - parse the actual_return_datetime from the return_data
+    from datetime import datetime
+    actual_return = datetime.fromisoformat(return_data.actual_return_datetime.replace('Z', '+00:00'))
+    days_rented = max(1, (actual_return.date() - pickup_date).days + 1)
     total_cost = days_rented * float(daily_rate) + return_data.additional_charges
     
     try:
         # Update rental
         cursor.execute("""
             UPDATE Rental
-            SET end_date = %s, total_cost = %s, notes = %s
+            SET actual_return_datetime = %s, total_cost = %s, status = 'Completed'
             WHERE rental_id = %s
-        """, (return_data.end_date, total_cost, return_data.notes, rental_id))
+        """, (return_data.actual_return_datetime, total_cost, rental_id))
         
         # Update vehicle status
         cursor.execute(
-            "UPDATE Vehicle SET status = 'available' WHERE vehicle_code = %s",
-            (vehicle_code,)
+            "UPDATE Vehicle SET status = 'Available' WHERE vehicle_id = %s",
+            (vehicle_id,)
         )
         
         db.commit()
@@ -296,17 +315,17 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
                 r.rental_id,
                 r.customer_id,
                 CONCAT(c.first_name, ' ', c.last_name) as customer_name,
-                r.vehicle_code,
+                r.vehicle_id,
                 CONCAT(v.brand, ' ', v.model) as vehicle_info,
                 v.daily_rate,
-                r.start_date,
-                r.expected_end_date,
-                r.end_date,
-                'completed' as status,
-                r.total_cost
+                r.pickup_date,
+                r.expected_return_date,
+                r.actual_return_date,
+                'Completed' as status,
+                r.total_amount
             FROM Rental r
             JOIN Customer c ON r.customer_id = c.customer_id
-            JOIN Vehicle v ON r.vehicle_code = v.vehicle_code
+            JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
             WHERE r.rental_id = %s
         """, (rental_id,))
         
@@ -323,12 +342,12 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
         rental_id=updated_rental[0],
         customer_id=updated_rental[1],
         customer_name=updated_rental[2],
-        vehicle_code=updated_rental[3],
+        vehicle_id=updated_rental[3],
         vehicle_info=updated_rental[4],
         daily_rate=float(updated_rental[5]),
-        start_date=updated_rental[6],
-        expected_end_date=updated_rental[7],
-        end_date=updated_rental[8],
+        pickup_date=updated_rental[6],
+        expected_return_date=updated_rental[7],
+        actual_return_date=updated_rental[8],
         status=updated_rental[9],
         total_cost=float(updated_rental[10]) if updated_rental[10] is not None else None
     )
