@@ -126,12 +126,15 @@ export default function Customers() {
 
 function CustomerModal({ customer, onClose, onSave }) {
   const [formData, setFormData] = useState({
+    customer_code: customer?.customer_code || '',
     first_name: customer?.first_name || '',
     last_name: customer?.last_name || '',
     email: customer?.email || '',
     phone: customer?.phone || '',
+    date_of_birth: customer?.date_of_birth || '',
     license_number: customer?.license_number || '',
-    country_of_residence: customer?.country_of_residence || ''
+    country_of_residence: customer?.country_of_residence || '',
+    is_loyalty_member: customer?.is_loyalty_member || false
   })
 
   const handleSubmit = (e) => {
@@ -147,6 +150,16 @@ function CustomerModal({ customer, onClose, onSave }) {
         </h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Customer Code</label>
+              <input
+                type="text"
+                value={formData.customer_code}
+                onChange={(e) => setFormData({...formData, customer_code: e.target.value})}
+                className="border p-2 rounded w-full"
+                placeholder="Leave empty for auto-generation"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium mb-1">First Name</label>
               <input
@@ -186,6 +199,15 @@ function CustomerModal({ customer, onClose, onSave }) {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium mb-1">Date of Birth</label>
+              <input
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+                className="border p-2 rounded w-full"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1">License Number</label>
               <input
                 type="text"
@@ -202,6 +224,17 @@ function CustomerModal({ customer, onClose, onSave }) {
                 onChange={(e) => setFormData({...formData, country_of_residence: e.target.value})}
                 className="border p-2 rounded w-full"
               />
+            </div>
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_loyalty_member}
+                  onChange={(e) => setFormData({...formData, is_loyalty_member: e.target.checked})}
+                  className="rounded"
+                />
+                <span className="text-sm font-medium">Loyalty Member</span>
+              </label>
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-2">

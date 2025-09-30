@@ -63,6 +63,7 @@ export const apiService = {
   getRentals: () => api.get('/rentals/'),
   addRental: (data) => api.post('/rentals/', data),
   updateRental: (id, data) => api.put(`/rentals/${id}`, data),
+  returnVehicle: (id, data) => api.post(`/rentals/${id}/return`, data),
   deleteRental: (id) => api.delete(`/rentals/${id}`),
 
   // Analytics
