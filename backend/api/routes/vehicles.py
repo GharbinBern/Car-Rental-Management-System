@@ -35,6 +35,7 @@ class VehicleUpdate(BaseModel):
 
 
 class VehicleOut(VehicleBase):
+    vehicle_id: int
     vehicle_code: str
 
 
@@ -51,7 +52,7 @@ def get_vehicles(
     cursor = db.cursor()
     
     query = """
-        SELECT vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
+        SELECT vehicle_id, vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
         FROM Vehicle
         WHERE 1=1
     """
@@ -79,15 +80,16 @@ def get_vehicles(
 
     return [
         VehicleOut(
-            vehicle_code=row[0],
-            brand=row[1],
-            model=row[2],
-            type=row[3],
-            fuel_type=row[4],
-            transmission=row[5],
-            status=row[6],
-            daily_rate=float(row[7]) if row[7] is not None else 0.0,
-            seating_capacity=row[8]
+            vehicle_id=row[0],
+            vehicle_code=row[1],
+            brand=row[2],
+            model=row[3],
+            type=row[4],
+            fuel_type=row[5],
+            transmission=row[6],
+            status=row[7],
+            daily_rate=float(row[8]) if row[8] is not None else 0.0,
+            seating_capacity=row[9]
         )
         for row in rows
     ]
@@ -99,7 +101,7 @@ def get_vehicle(vehicle_code: str):
     cursor = db.cursor()
     cursor.execute(
         """
-        SELECT vehicle_code, brand, model, year, status, daily_rate
+        SELECT vehicle_id, vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
         FROM Vehicle
         WHERE vehicle_code = %s
         """,
@@ -113,12 +115,16 @@ def get_vehicle(vehicle_code: str):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     return VehicleOut(
-        vehicle_code=v[0],
-        brand=v[1],
-        model=v[2],
-        year=v[3],
-        status=v[4],
-        daily_rate=float(v[5]) if v[5] is not None else None
+        vehicle_id=v[0],
+        vehicle_code=v[1],
+        brand=v[2],
+        model=v[3],
+        type=v[4],
+        fuel_type=v[5],
+        transmission=v[6],
+        status=v[7],
+        daily_rate=float(v[8]) if v[8] is not None else 0.0,
+        seating_capacity=v[9]
     )
 
 @router.post("/", response_model=VehicleOut, status_code=201)
@@ -134,22 +140,43 @@ def create_vehicle(vehicle: VehicleCreate):
         raise HTTPException(status_code=400, detail="Vehicle code already exists")
     
     try:
+        # Get a default branch_id (assuming branch_id=1 exists)
+        cursor.execute("SELECT branch_id FROM Branch LIMIT 1")
+        branch_result = cursor.fetchone()
+        default_branch_id = branch_result[0] if branch_result else 1
+        
         cursor.execute(
             """
-            INSERT INTO Vehicle (vehicle_code, brand, model, year, status, daily_rate)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING vehicle_code, brand, model, year, status, daily_rate
+            INSERT INTO Vehicle (
+                vehicle_code, brand, model, type, fuel_type, transmission, 
+                status, daily_rate, seating_capacity, branch_id
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 vehicle.vehicle_code,
                 vehicle.brand,
                 vehicle.model,
-                vehicle.year,
+                vehicle.type,
+                vehicle.fuel_type,
+                vehicle.transmission,
                 vehicle.status,
-                vehicle.daily_rate
+                vehicle.daily_rate,
+                vehicle.seating_capacity,
+                default_branch_id
             )
         )
         db.commit()
+        
+        # Fetch the created vehicle
+        cursor.execute(
+            """
+            SELECT vehicle_id, vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
+            FROM Vehicle 
+            WHERE vehicle_code = %s
+            """,
+            (vehicle.vehicle_code,)
+        )
         new_vehicle = cursor.fetchone()
         
     except Exception as e:
@@ -160,12 +187,16 @@ def create_vehicle(vehicle: VehicleCreate):
         db.close()
     
     return VehicleOut(
-        vehicle_code=new_vehicle[0],
-        brand=new_vehicle[1],
-        model=new_vehicle[2],
-        year=new_vehicle[3],
-        status=new_vehicle[4],
-        daily_rate=float(new_vehicle[5])
+        vehicle_id=new_vehicle[0],
+        vehicle_code=new_vehicle[1],
+        brand=new_vehicle[2],
+        model=new_vehicle[3],
+        type=new_vehicle[4],
+        fuel_type=new_vehicle[5],
+        transmission=new_vehicle[6],
+        status=new_vehicle[7],
+        daily_rate=float(new_vehicle[8]),
+        seating_capacity=new_vehicle[9]
     )
 
 @router.put("/{vehicle_code}", response_model=VehicleOut)
@@ -198,13 +229,23 @@ def update_vehicle(vehicle_code: str, vehicle: VehicleUpdate):
         UPDATE Vehicle
         SET {", ".join(update_fields)}
         WHERE vehicle_code = %s
-        RETURNING vehicle_code, brand, model, year, status, daily_rate
     """
     
     try:
         cursor.execute(query, values)
         db.commit()
+        
+        # Fetch the updated vehicle
+        cursor.execute(
+            """
+            SELECT vehicle_id, vehicle_code, brand, model, type, fuel_type, transmission, status, daily_rate, seating_capacity
+            FROM Vehicle 
+            WHERE vehicle_code = %s
+            """,
+            (vehicle_code,)
+        )
         updated_vehicle = cursor.fetchone()
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -213,10 +254,14 @@ def update_vehicle(vehicle_code: str, vehicle: VehicleUpdate):
         db.close()
     
     return VehicleOut(
-        vehicle_code=updated_vehicle[0],
-        brand=updated_vehicle[1],
-        model=updated_vehicle[2],
-        year=updated_vehicle[3],
-        status=updated_vehicle[4],
-        daily_rate=float(updated_vehicle[5])
+        vehicle_id=updated_vehicle[0],
+        vehicle_code=updated_vehicle[1],
+        brand=updated_vehicle[2],
+        model=updated_vehicle[3],
+        type=updated_vehicle[4],
+        fuel_type=updated_vehicle[5],
+        transmission=updated_vehicle[6],
+        status=updated_vehicle[7],
+        daily_rate=float(updated_vehicle[8]),
+        seating_capacity=updated_vehicle[9]
     )

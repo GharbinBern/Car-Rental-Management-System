@@ -34,7 +34,7 @@ class MaintenanceOut(MaintenanceBase):
 
 
 @router.post("/", response_model=MaintenanceOut)
-async def create_maintenance(maintenance: MaintenanceCreate, current_user = Depends(get_current_active_user)):
+async def create_maintenance(maintenance: MaintenanceCreate):
     db = connect_db()
     cursor = db.cursor()
     
@@ -58,7 +58,6 @@ async def create_maintenance(maintenance: MaintenanceCreate, current_user = Depe
             INSERT INTO VehicleMaintenance (
                 vehicle_id, description, maintenance_date, cost, performed_by
             ) VALUES (%s, %s, %s, %s, %s)
-            RETURNING maintenance_id
             """,
             (
                 maintenance.vehicle_id,
@@ -68,7 +67,7 @@ async def create_maintenance(maintenance: MaintenanceCreate, current_user = Depe
                 maintenance.performed_by
             )
         )
-        maintenance_id = cursor.fetchone()[0]
+        maintenance_id = cursor.lastrowid
         
         db.commit()
         
@@ -88,7 +87,6 @@ async def create_maintenance(maintenance: MaintenanceCreate, current_user = Depe
 
 @router.get("/", response_model=List[MaintenanceOut])
 async def list_maintenance(
-    current_user = Depends(get_current_active_user),
     vehicle_id: Optional[int] = None,
     start_date: Optional[str] = None,  # Format: YYYY-MM-DD
     end_date: Optional[str] = None,    # Format: YYYY-MM-DD
@@ -160,7 +158,6 @@ async def list_maintenance(
 
 @router.get("/stats")
 async def get_maintenance_stats(
-    current_user = Depends(get_current_active_user),
     vehicle_id: Optional[int] = None,
     year: Optional[int] = None
 ):
@@ -217,7 +214,7 @@ async def get_maintenance_stats(
 
 
 @router.get("/{maintenance_id}", response_model=MaintenanceOut)
-async def get_maintenance(maintenance_id: int, current_user = Depends(get_current_active_user)):
+async def get_maintenance(maintenance_id: int):
     db = connect_db()
     cursor = db.cursor()
     
@@ -256,7 +253,6 @@ async def get_maintenance(maintenance_id: int, current_user = Depends(get_curren
 @router.get("/vehicle/{vehicle_id}/history", response_model=List[MaintenanceOut])
 async def get_vehicle_maintenance_history(
     vehicle_id: int,
-    current_user = Depends(get_current_active_user),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
@@ -308,8 +304,7 @@ async def get_vehicle_maintenance_history(
 @router.put("/{maintenance_id}", response_model=MaintenanceOut)
 async def update_maintenance(
     maintenance_id: int,
-    maintenance: MaintenanceUpdate,
-    current_user = Depends(get_current_active_user)
+    maintenance: MaintenanceUpdate
 ):
     db = connect_db()
     cursor = db.cursor()
@@ -377,7 +372,7 @@ async def update_maintenance(
 
 
 @router.delete("/{maintenance_id}")
-async def delete_maintenance(maintenance_id: int, current_user = Depends(get_current_active_user)):
+async def delete_maintenance(maintenance_id: int):
     db = connect_db()
     cursor = db.cursor()
     

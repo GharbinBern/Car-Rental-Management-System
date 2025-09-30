@@ -152,21 +152,43 @@ def create_customer(customer: CustomerCreate):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     try:
+        # Generate customer_code if not provided
+        if not customer.customer_code:
+            cursor.execute("SELECT COUNT(*) FROM Customer")
+            count = cursor.fetchone()[0]
+            customer_code = f"CUST{count + 1:04d}"
+        else:
+            customer_code = customer.customer_code
+            
         cursor.execute(
             """
-            INSERT INTO Customer (name, email, phone, license_number, address)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING customer_id, name, email, phone, license_number, address
+            INSERT INTO Customer (customer_code, first_name, last_name, email, phone, license_number, date_of_birth, country_of_residence, is_loyalty_member)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
-                customer.name,
+                customer_code,
+                customer.first_name,
+                customer.last_name,
                 customer.email,
                 customer.phone,
                 customer.license_number,
-                customer.address
+                customer.date_of_birth,
+                customer.country_of_residence,
+                customer.is_loyalty_member
             )
         )
         db.commit()
+        customer_id = cursor.lastrowid
+        
+        # Fetch the created customer
+        cursor.execute(
+            """
+            SELECT customer_id, customer_code, first_name, last_name, email, phone, license_number, date_of_birth, country_of_residence, is_loyalty_member
+            FROM Customer 
+            WHERE customer_id = %s
+            """,
+            (customer_id,)
+        )
         new_customer = cursor.fetchone()
         
     except Exception as e:
@@ -178,11 +200,15 @@ def create_customer(customer: CustomerCreate):
     
     return CustomerOut(
         customer_id=new_customer[0],
-        name=new_customer[1],
-        email=new_customer[2],
-        phone=new_customer[3],
-        license_number=new_customer[4],
-        address=new_customer[5]
+        customer_code=new_customer[1],
+        first_name=new_customer[2],
+        last_name=new_customer[3],
+        email=new_customer[4],
+        phone=new_customer[5],
+        license_number=new_customer[6],
+        date_of_birth=new_customer[7],
+        country_of_residence=new_customer[8],
+        is_loyalty_member=new_customer[9]
     )
 
 
@@ -227,13 +253,23 @@ def update_customer(customer_id: int, customer: CustomerUpdate):
         UPDATE Customer
         SET {", ".join(update_fields)}
         WHERE customer_id = %s
-        RETURNING customer_id, name, email, phone, license_number, address
     """
     
     try:
         cursor.execute(query, values)
         db.commit()
+        
+        # Fetch the updated customer
+        cursor.execute(
+            """
+            SELECT customer_id, customer_code, first_name, last_name, email, phone, license_number, date_of_birth, country_of_residence, is_loyalty_member
+            FROM Customer 
+            WHERE customer_id = %s
+            """,
+            (customer_id,)
+        )
         updated_customer = cursor.fetchone()
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -243,9 +279,13 @@ def update_customer(customer_id: int, customer: CustomerUpdate):
     
     return CustomerOut(
         customer_id=updated_customer[0],
-        name=updated_customer[1],
-        email=updated_customer[2],
-        phone=updated_customer[3],
-        license_number=updated_customer[4],
-        address=updated_customer[5]
+        customer_code=updated_customer[1],
+        first_name=updated_customer[2],
+        last_name=updated_customer[3],
+        email=updated_customer[4],
+        phone=updated_customer[5],
+        license_number=updated_customer[6],
+        date_of_birth=updated_customer[7],
+        country_of_residence=updated_customer[8],
+        is_loyalty_member=updated_customer[9]
     )

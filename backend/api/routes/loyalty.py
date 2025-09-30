@@ -47,7 +47,6 @@ async def create_loyalty_program(program: LoyaltyProgramCreate, current_user = D
             INSERT INTO LoyaltyProgram (
                 customer_id, points_balance, membership_tier, date_joined
             ) VALUES (%s, %s, %s, %s)
-            RETURNING program_id
             """,
             (
                 program.customer_id,
@@ -56,7 +55,7 @@ async def create_loyalty_program(program: LoyaltyProgramCreate, current_user = D
                 program.date_joined
             )
         )
-        program_id = cursor.fetchone()[0]
+        program_id = cursor.lastrowid
 
         # Update customer's loyalty status
         cursor.execute(

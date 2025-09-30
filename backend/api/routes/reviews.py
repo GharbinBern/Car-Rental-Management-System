@@ -65,7 +65,6 @@ async def create_review(review: ReviewCreate, current_user = Depends(get_current
             INSERT INTO ReviewRatings (
                 rental_id, rating_score, review_text, review_date
             ) VALUES (%s, %s, %s, %s)
-            RETURNING review_id
             """,
             (
                 review.rental_id,
@@ -74,7 +73,7 @@ async def create_review(review: ReviewCreate, current_user = Depends(get_current
                 review.review_date
             )
         )
-        review_id = cursor.fetchone()[0]
+        review_id = cursor.lastrowid
         
         db.commit()
         
