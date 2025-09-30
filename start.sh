@@ -12,8 +12,8 @@ if command -v conda >/dev/null 2>&1; then
 fi
 
 # Warn if .env is missing
-if [ ! -f ./.env ]; then
-  echo "[warn] .env not found in project root. If needed, copy .env.example to .env"
+if [ ! -f ./backend/.env ]; then
+  echo "[warn] backend/.env not found. If needed, copy .env.example to backend/.env"
 fi
 
 # Ensure ports are free
@@ -26,8 +26,8 @@ if lsof -ti:3000 >/dev/null 2>&1; then
   lsof -ti:3000 | xargs -r kill -9 || true
 fi
 
-BACKEND_CMD=(uvicorn api.main:app --reload --port 8000)
-FRONTEND_CMD=(npm run dev -- --port 3000 --strictPort --host)
+BACKEND_CMD="uvicorn backend.api.main:app --reload --port 8000"
+FRONTEND_CMD="npm run dev -- --port 3000 --strictPort --host"
 
 pids=()
 
@@ -41,11 +41,11 @@ cleanup() {
 trap cleanup INT TERM
 
 echo "[start] Backend: http://127.0.0.1:8000"
-(${=BACKEND_CMD}) &
+eval $BACKEND_CMD &
 pids+=$!
 
 echo "[start] Frontend: http://localhost:3000"
-(cd frontend && ${=FRONTEND_CMD}) &
+(cd frontend && eval $FRONTEND_CMD) &
 pids+=$!
 
 echo "[info] Press Ctrl+C to stop both servers."
