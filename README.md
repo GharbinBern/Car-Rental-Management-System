@@ -22,25 +22,9 @@ A modern full-stack car rental management system with React frontend, FastAPI ba
 
 ```
 Car-Rental-Management-System/
-├── api/                           # FastAPI Backend API Server
-│   ├── __init__.py
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── core/                     # Core application configuration
-│   │   ├── __init__.py
-│   │   ├── config.py
-│   │   ├── middleware.py
-│   │   └── schemas.py
-│   └── routes/                   # API endpoint modules
-│       ├── __init__.py
-│       ├── auth.py
-│       ├── vehicles.py
-│       ├── customers.py
-│       ├── rentals.py
-│       ├── maintenance.py
-│       ├── analytics.py
-│       ├── loyalty.py
-│       └── reviews.py
+├── run.py                        # CLI operations (database, admin tasks)
+├── Makefile                      # Web development (browser-based work)
+├── .env.example                  # Environment variables template
 ├── frontend/                     # React Frontend Application
 │   ├── package.json
 │   ├── vite.config.js
@@ -64,56 +48,67 @@ Car-Rental-Management-System/
 │       └── services/            # API communication layer
 │           ├── api.js
 │           └── auth.js
-├── cli/                          # Command Line Management Tools
-│   └── manage.py
-├── db_layer/                     # Database Abstraction Layer
-│   ├── __init__.py
-│   ├── connection.py
-│   └── setup.py
-├── business_logic/               # Domain Business Logic
-│   ├── __init__.py
-│   ├── customer.py
-│   ├── vehicles.py
-│   ├── rentals.py
-│   └── reports.py
-├── sql/                          # Database Schema & Data
-│   ├── schema.sql
-│   ├── views.sql
-│   ├── auth.sql
-│   └── insert_data.sql
-├── requirements.txt
-├── run.py
-├── create_admin_user.py
-├── Makefile
-├── .env.example
-└── README.md
+└── backend/                      # All Backend Components
+    ├── .env                      # Backend configuration
+    ├── requirements.txt          # Backend dependencies
+    ├── api/                      # FastAPI Backend API Server
+    │   ├── main.py
+    │   ├── core/                 # Core application configuration
+    │   │   ├── config.py
+    │   │   └── middleware.py
+    │   └── routes/               # API endpoint modules
+    │       ├── auth.py
+    │       ├── vehicles.py
+    │       ├── customers.py
+    │       ├── rentals.py
+    │       ├── maintenance.py
+    │       ├── analytics.py
+    │       ├── loyalty.py
+    │       └── reviews.py
+    ├── cli/                      # Command Line Management Tools
+    │   ├── interactive.py        # Interactive CLI interface
+    │   ├── manage.py             # Admin utilities (create users, etc.)
+    │   └── services/             # CLI business functions
+    │       ├── customers.py      # Customer CLI operations
+    │       ├── vehicles.py       # Vehicle CLI operations
+    │       ├── rentals.py        # Rental CLI operations
+    │       └── analytics.py      # Reporting CLI operations
+    ├── database/                 # Database Management
+    │   ├── connection.py         # MySQL connection & pooling
+    │   └── setup.py              # Database initialization
+    └── sql/                      # Database Schema & Data
+        ├── schema.sql
+        ├── views.sql
+        ├── auth.sql
+        └── insert_data.sql
 ```
 
 ### Directory Breakdown
-
-**API Layer (`api/`)**
-- Houses the FastAPI backend with JWT authentication and comprehensive REST endpoints
-- `core/` contains centralized configuration, middleware, and Pydantic schemas
-- `routes/` implements all business endpoints with proper validation and error handling
 
 **Frontend (`frontend/`)**
 - Modern React 18 application with Vite for fast development and optimized builds
 - Uses TailwindCSS for responsive design and consistent styling
 - Context-based state management for authentication and global app state
 
-**CLI Tools (`cli/`)**
-- Administrative command-line utilities for user management and system operations
-- Integrated with the main application for database access and business logic
+**Backend (`backend/`)**
+- All server-side components organized in one location
+- Clean separation between API routes, CLI tools, and database management
 
-**Database Layer (`db_layer/`)**
-- Abstraction layer providing clean database interfaces for business logic
-- Connection pooling and query optimization for production performance
+**API Layer (`backend/api/`)**
+- FastAPI backend with JWT authentication and comprehensive REST endpoints
+- `core/` contains centralized configuration and middleware
+- `routes/` implements all business endpoints with proper validation and error handling
 
-**Business Logic (`business_logic/`)**
-- Domain-specific business rules separated from API and database concerns
-- Promotes code reusability between web API and CLI applications
+**CLI Tools (`backend/cli/`)**
+- Interactive CLI interface and admin management utilities
+- `services/` contains CLI-specific business functions
+- Integrated with database and separate from web API logic
 
-**SQL Scripts (`sql/`)**
+**Database (`backend/database/`)**
+- MySQL connection management with connection pooling
+- Database initialization and schema setup utilities
+
+**SQL Scripts (`backend/sql/`)**
 - Complete database schema with proper indexing and constraints
 - Sample data and views for development and reporting
 
@@ -134,13 +129,13 @@ cp .env.example .env  # Edit with your MySQL credentials
 # 2. Python environment
 conda create -y -n car-rental python=3.12
 conda activate car-rental
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # 3. Database setup
 python run.py --setup-only
 
 # 4. Create admin user
-python cli/manage.py create-admin
+python backend/cli/manage.py create-admin
 
 # 5. Install frontend dependencies
 cd frontend && npm install && cd ..
@@ -156,42 +151,28 @@ make dev
 - **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/api/auth/health
 
-### CLI Management
+## Commands
 
-## Development
-
-### Commands
+### Development
 ```bash
 make dev          # Start full-stack development
 make backend      # Backend only (port 8000)
 make frontend     # Frontend only (port 3000) 
 make stop         # Stop all services
-make create-admin # Create/update admin user
 ```
 
-### CLI Tools
+### Database & Admin
 ```bash
-python cli/manage.py create-admin                                    # Interactive admin creation
-python cli/manage.py create-admin --username admin --password pass  # Non-interactive
-python run.py --setup-only                                          # Database initialization only
+python run.py --setup-only                           # Initialize database
+python backend/cli/manage.py create-admin            # Create admin user
+make create-admin                                    # Create admin (via Makefile)
 ```
 
-## Usage
-
-### Web Interface
-Access at http://localhost:3000 after running `make dev`. Login with `admin` / `admin123`.
-
-### CLI Interface
+### Interactive CLI
 ```bash
 python run.py          # Full setup + interactive CLI
 python run.py --cli-only # CLI only (skip database setup)
 ```
-
-**Available CLI Features:**
-- Vehicle management (list, availability)
-- Customer management (register, history)
-- Rental operations (rent, return)
-- Analytics and reporting
 
 ## API Documentation
 
@@ -211,7 +192,7 @@ With the backend running, access comprehensive API docs:
 
 ## Configuration
 
-Database credentials are configured in `.env` file:
+Database credentials are configured in `backend/.env` file:
 ```env
 DB_HOST=localhost
 DB_PORT=3306
@@ -220,29 +201,6 @@ DB_PASSWORD=your_mysql_password
 DB_NAME=car_rental_db
 SECRET_KEY=your-secret-key-here
 ```
-conda activate car-rental  # or: source .venv/bin/activate
-uvicorn api.main:app --reload --port 8000
-
-
-## System Features
-
-### Data Management
-- **Customer Codes**: Unique identifiers for customer tracking
-- **Loyalty Program**: Integrated customer loyalty system
-- **Vehicle Status**: Real-time availability tracking
-- **Rental History**: Complete audit trail of all transactions
-
-### Security
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: Bcrypt password encryption
-- **CORS Configuration**: Secure cross-origin requests
-- **Request Validation**: Comprehensive input validation
-
-### Performance
-- **Database Indexing**: Optimized queries for fast response
-- **Connection Pooling**: Efficient database connections
-- **Frontend Optimization**: Vite build optimization
-- **API Caching**: Response caching where appropriate
 
 ## Troubleshooting
 
@@ -263,7 +221,7 @@ lsof -ti:3000 | xargs kill -9  # Free frontend port
 # Backend: recreate Python environment
 conda deactivate && conda env remove -n car-rental
 conda create -y -n car-rental python=3.12 && conda activate car-rental
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # Frontend: clear npm cache
 cd frontend && rm -rf node_modules package-lock.json

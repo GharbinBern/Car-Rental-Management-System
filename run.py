@@ -5,9 +5,9 @@ Sets up the database and starts the CLI interface.
 
 import sys
 import argparse
-from db_layer.connection import create_database_if_not_exists
-from db_layer.setup import init_database
-from cli.main_cli import main as cli_main
+from backend.database.connection import create_database_if_not_exists
+from backend.database.setup import init_database
+from backend.cli.interactive import main as cli_main
 
 def setup_database():
     """Initialize the database with tables and sample data."""

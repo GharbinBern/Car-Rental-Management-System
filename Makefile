@@ -6,7 +6,7 @@ dev:
 
 backend:
 	@eval "$$(conda shell.zsh hook)" && conda activate car-rental || true; \
-	uvicorn api.main:app --reload --port 8000
+	uvicorn backend.api.main:app --reload --port 8000
 
 frontend:
 	@cd frontend && npm run dev -- --port 3000 --strictPort --host
@@ -16,4 +16,4 @@ stop:
 
 create-admin:
 	@eval "$$(conda shell.zsh hook)" && conda activate car-rental || true; \
-	python cli/manage.py create-admin
+	python backend/cli/manage.py create-admin
