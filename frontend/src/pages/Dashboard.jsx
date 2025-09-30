@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiService } from '../services/api'
+import { formatEuro } from '../utils/currency'
 import {
   TruckIcon,
   UserGroupIcon,
@@ -24,32 +25,28 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [vehiclesRes, rentalsRes, customersRes] = await Promise.all([
+        const [vehiclesRes, rentalsRes, customersRes, revenueRes] = await Promise.all([
           apiService.getVehicles(),
           apiService.getRentals(),
-          apiService.getCustomers()
+          apiService.getCustomers(),
+          apiService.getRevenueAnalytics('month').catch(() => ({ data: { data: [] } }))
         ])
 
         const vehicles = vehiclesRes.data
         const rentals = rentalsRes.data
         const customers = customersRes.data
+        const revenueData = revenueRes.data?.data || []
 
         // Calculate statistics
         const availableVehicles = vehicles.filter(v => v.status?.toLowerCase() === 'available').length
         const activeRentals = rentals.filter(r => r.status?.toLowerCase() === 'active').length
         
-        // Calculate revenue - use all rentals for monthly revenue and active rentals for today
-        const today = new Date().toISOString().split('T')[0]
-        const thisMonth = today.substring(0, 7)
+        // Calculate revenue from analytics API
+        const revenueThisMonth = revenueData.reduce((sum, item) => sum + (parseFloat(item.revenue) || 0), 0)
         
         // For today's revenue, use active rentals
         const revenueToday = rentals
           .filter(r => r.status?.toLowerCase() === 'active')
-          .reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0)
-        
-        // For monthly revenue, use all rentals from this month
-        const revenueThisMonth = rentals
-          .filter(r => r.start_date && r.start_date.startsWith(thisMonth))
           .reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0)
 
         setStats({
@@ -170,12 +167,12 @@ export default function Dashboard() {
             </div>
             <div className="ml-4 flex-1">
               <p className="text-sm font-medium text-gray-500">Monthly Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">${stats.revenueThisMonth.toFixed(2)}</p>
+              <p className="text-2xl font-semibold text-gray-900">{formatEuro(stats.revenueThisMonth)}</p>
             </div>
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">${stats.revenueToday.toFixed(2)} active rentals</p>
+              <p className="text-sm text-gray-600">{formatEuro(stats.revenueToday)} active rentals</p>
               <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
                 +12.5% vs last month
               </span>
@@ -189,21 +186,30 @@ export default function Dashboard() {
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
           <h3 className="text-lg font-semibold mb-2">Quick Rent</h3>
           <p className="text-blue-100 mb-4">Process a new rental quickly</p>
-          <button className="bg-white text-blue-600 px-4 py-2 rounded font-medium hover:bg-blue-50 transition-colors">
+          <button 
+            onClick={() => window.location.href = '/rentals'}
+            className="bg-white text-blue-600 px-4 py-2 rounded font-medium hover:bg-blue-50 transition-colors"
+          >
             New Rental
           </button>
         </div>
         <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
           <h3 className="text-lg font-semibold mb-2">Add Vehicle</h3>
           <p className="text-green-100 mb-4">Expand your fleet</p>
-          <button className="bg-white text-green-600 px-4 py-2 rounded font-medium hover:bg-green-50 transition-colors">
+          <button 
+            onClick={() => window.location.href = '/vehicles'}
+            className="bg-white text-green-600 px-4 py-2 rounded font-medium hover:bg-green-50 transition-colors"
+          >
             Add Vehicle
           </button>
         </div>
         <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
           <h3 className="text-lg font-semibold mb-2">View Reports</h3>
           <p className="text-purple-100 mb-4">Analyze business performance</p>
-          <button className="bg-white text-purple-600 px-4 py-2 rounded font-medium hover:bg-purple-50 transition-colors">
+          <button 
+            onClick={() => window.location.href = '/reports'}
+            className="bg-white text-purple-600 px-4 py-2 rounded font-medium hover:bg-purple-50 transition-colors"
+          >
             Generate Report
           </button>
         </div>

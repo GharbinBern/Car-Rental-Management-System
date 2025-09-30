@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiService } from '../services/api'
+import { formatEuro } from '../utils/currency'
 import {
   ClipboardDocumentListIcon,
   PlusIcon,
@@ -29,7 +30,7 @@ export default function Rentals() {
         apiService.getCustomers()
       ])
       setRentals(rentalsRes.data)
-      setVehicles(vehiclesRes.data.filter(v => v.status?.toLowerCase() === 'available'))
+      setVehicles(vehiclesRes.data.filter(v => v.status && v.status.toLowerCase() === 'available'))
       setCustomers(customersRes.data)
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -56,7 +57,12 @@ export default function Rentals() {
 
   const handleReturnVehicle = async (rentalId) => {
     try {
-      await apiService.updateRental(rentalId, { status: 'completed' })
+      const returnData = {
+        actual_return_datetime: new Date().toISOString(),
+        additional_charges: 0,
+        notes: 'Returned via web interface'
+      }
+      await apiService.returnVehicle(rentalId, returnData)
       fetchRentals()
     } catch (err) {
       console.error('Error returning vehicle:', err)
@@ -142,7 +148,7 @@ export default function Rentals() {
             <div>
               <p className="text-sm text-gray-500">Total Revenue</p>
               <p className="text-xl font-semibold">
-                ${rentals.reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0).toFixed(2)}
+                {formatEuro(rentals.reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0))}
               </p>
             </div>
           </div>
@@ -264,11 +270,18 @@ export default function Rentals() {
 }
 
 function RentalModal({ vehicles, customers, onClose, onSave }) {
+  // Function to get local datetime string for datetime-local input
+  const getLocalDateTimeString = (date) => {
+    const tzoffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+    const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+  }
+
   const [formData, setFormData] = useState({
     customer_id: '',
-    vehicle_code: '',
-    start_date: new Date().toISOString().split('T')[0],
-    expected_end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    vehicle_id: '',
+    pickup_datetime: getLocalDateTimeString(new Date()),
+    return_datetime: getLocalDateTimeString(new Date(Date.now() + 24 * 60 * 60 * 1000))
   })
 
   const handleSubmit = (e) => {
@@ -301,38 +314,38 @@ function RentalModal({ vehicles, customers, onClose, onSave }) {
             <div>
               <label className="block text-sm font-medium mb-1">Vehicle</label>
               <select
-                value={formData.vehicle_code}
-                onChange={(e) => setFormData({...formData, vehicle_code: e.target.value})}
+                value={formData.vehicle_id}
+                onChange={(e) => setFormData({...formData, vehicle_id: parseInt(e.target.value)})}
                 className="border p-2 rounded w-full"
                 required
               >
                 <option value="">Select Vehicle</option>
                 {vehicles.map(v => (
-                  <option key={v.vehicle_code} value={v.vehicle_code}>
-                    {v.brand} {v.model} (${v.daily_rate}/day)
+                  <option key={v.vehicle_id} value={v.vehicle_id}>
+                    {v.brand} {v.model} ({formatEuro(v.daily_rate)}/day)
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Start Date</label>
+              <label className="block text-sm font-medium mb-1">Pickup Date & Time</label>
               <input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                type="datetime-local"
+                value={formData.pickup_datetime}
+                onChange={(e) => setFormData({...formData, pickup_datetime: e.target.value})}
                 className="border p-2 rounded w-full"
-                min={new Date().toISOString().split('T')[0]}
+                min={getLocalDateTimeString(new Date())}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Expected Return Date</label>
+              <label className="block text-sm font-medium mb-1">Return Date & Time</label>
               <input
-                type="date"
-                value={formData.expected_end_date}
-                onChange={(e) => setFormData({...formData, expected_end_date: e.target.value})}
+                type="datetime-local"
+                value={formData.return_datetime}
+                onChange={(e) => setFormData({...formData, return_datetime: e.target.value})}
                 className="border p-2 rounded w-full"
-                min={formData.start_date}
+                min={formData.pickup_datetime}
                 required
               />
             </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiService } from '../services/api'
+import { formatEuro } from '../utils/currency'
 import {
   TruckIcon,
   PlusIcon,
@@ -188,7 +189,7 @@ export default function Vehicles() {
                 </td>
                 <td className="p-4">
                   <span className="text-lg font-semibold text-gray-900">
-                    {v.daily_rate ? `€${v.daily_rate}` : '-'}
+                    {v.daily_rate ? formatEuro(v.daily_rate) : '-'}
                   </span>
                   <span className="text-sm text-gray-500">/day</span>
                 </td>
@@ -252,9 +253,12 @@ function VehicleModal({ vehicle, onClose, onSave }) {
     vehicle_code: vehicle?.vehicle_code || '',
     brand: vehicle?.brand || '',
     model: vehicle?.model || '',
-    year: vehicle?.year || '',
+    type: vehicle?.type || '',
+    fuel_type: vehicle?.fuel_type || '',
+    transmission: vehicle?.transmission || '',
     daily_rate: vehicle?.daily_rate || '',
-    status: vehicle?.status || 'available'
+    status: vehicle?.status || 'available',
+    seating_capacity: vehicle?.seating_capacity || ''
   })
 
   const handleSubmit = (e) => {
@@ -302,13 +306,56 @@ function VehicleModal({ vehicle, onClose, onSave }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Year</label>
+              <label className="block text-sm font-medium mb-1">Type</label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({...formData, type: e.target.value})}
+                className="border p-2 rounded w-full"
+              >
+                <option value="">Select Type</option>
+                <option value="Economy">Economy</option>
+                <option value="Midsize">Midsize</option>
+                <option value="Luxury">Luxury</option>
+                <option value="SUV">SUV</option>
+                <option value="Van">Van</option>
+                <option value="Convertible">Convertible</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Fuel Type</label>
+              <select
+                value={formData.fuel_type}
+                onChange={(e) => setFormData({...formData, fuel_type: e.target.value})}
+                className="border p-2 rounded w-full"
+              >
+                <option value="">Select Fuel Type</option>
+                <option value="Gasoline">Gasoline</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Electric">Electric</option>
+                <option value="Diesel">Diesel</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Transmission</label>
+              <select
+                value={formData.transmission}
+                onChange={(e) => setFormData({...formData, transmission: e.target.value})}
+                className="border p-2 rounded w-full"
+              >
+                <option value="">Select Transmission</option>
+                <option value="Automatic">Automatic</option>
+                <option value="Manual">Manual</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Seating Capacity</label>
               <input
                 type="number"
-                value={formData.year}
-                onChange={(e) => setFormData({...formData, year: e.target.value})}
+                value={formData.seating_capacity}
+                onChange={(e) => setFormData({...formData, seating_capacity: parseInt(e.target.value) || ''})}
                 className="border p-2 rounded w-full"
-                required
+                min="1"
+                max="15"
               />
             </div>
             <div>
