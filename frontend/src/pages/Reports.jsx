@@ -44,20 +44,52 @@ export default function Reports() {
   }
 
   const exportReport = (type) => {
-    // In a real app, this would generate and download a PDF/Excel file
-    const reportData = {
-      type,
-      generated_at: new Date().toISOString(),
-      analytics,
-      revenueData,
-      fleetData
+    // Export as CSV for business use
+    let csvContent = ''
+    let filename = `${type}_report_${new Date().toISOString().split('T')[0]}.csv`
+    
+    if (type === 'revenue' && revenueData?.data) {
+      csvContent = [
+        'Period,Revenue (€),Rental Count',
+        ...revenueData.data.map(item => `${item.period || 'Unknown'},${item.revenue || 0},${item.rental_count || 0}`)
+      ].join('\n')
+    } else if (type === 'fleet' && fleetData) {
+      csvContent = [
+        'Branch,Total Vehicles,Available,Rented,In Maintenance',
+        ...fleetData.fleet_by_branch.map(branch => 
+          `${branch.branch_code || 'Unknown'},${branch.total_vehicles || 0},${branch.available || 0},${branch.rented || 0},${branch.in_maintenance || 0}`
+        )
+      ].join('\n')
+    } else if (type === 'customer' && analytics) {
+      csvContent = [
+        'Metric,Value',
+        `Active Customers (Month),${analytics.customer_insights?.active_customers_month || 0}`,
+        `Total Revenue,€${revenueData?.data?.reduce((sum, item) => sum + (item.revenue || 0), 0).toFixed(2) || '0.00'}`,
+        `Total Rentals,${revenueData?.data?.reduce((sum, item) => sum + (item.rental_count || 0), 0) || 0}`
+      ].join('\n')
+    } else {
+      // Comprehensive report
+      csvContent = [
+        'Report Type,Car Rental Management System',
+        `Generated,${new Date().toLocaleDateString()}`,
+        '',
+        'REVENUE SUMMARY',
+        'Period,Revenue (€),Rental Count',
+        ...(revenueData?.data?.map(item => `${item.period || 'Unknown'},${item.revenue || 0},${item.rental_count || 0}`) || []),
+        '',
+        'FLEET SUMMARY',
+        'Branch,Total Vehicles,Available,Rented,In Maintenance',
+        ...(fleetData?.fleet_by_branch?.map(branch => 
+          `${branch.branch_code || 'Unknown'},${branch.total_vehicles || 0},${branch.available || 0},${branch.rented || 0},${branch.in_maintenance || 0}`
+        ) || [])
+      ].join('\n')
     }
     
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' })
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${type}_report_${new Date().toISOString().split('T')[0]}.json`
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
