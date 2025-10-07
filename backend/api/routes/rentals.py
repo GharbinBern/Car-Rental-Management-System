@@ -318,11 +318,11 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
                 r.vehicle_id,
                 CONCAT(v.brand, ' ', v.model) as vehicle_info,
                 v.daily_rate,
-                r.pickup_date,
-                r.expected_return_date,
-                r.actual_return_date,
+                DATE(r.pickup_datetime) as pickup_date,
+                DATE(r.return_datetime) as expected_return_date,
+                DATE(r.actual_return_datetime) as actual_return_date,
                 'Completed' as status,
-                r.total_amount
+                r.total_cost
             FROM Rental r
             JOIN Customer c ON r.customer_id = c.customer_id
             JOIN Vehicle v ON r.vehicle_id = v.vehicle_id
@@ -345,9 +345,9 @@ def return_vehicle(rental_id: int, return_data: RentalUpdate):
         vehicle_id=updated_rental[3],
         vehicle_info=updated_rental[4],
         daily_rate=float(updated_rental[5]),
-        pickup_date=updated_rental[6],
-        expected_return_date=updated_rental[7],
-        actual_return_date=updated_rental[8],
+        pickup_date=str(updated_rental[6]) if updated_rental[6] is not None else None,
+        expected_return_date=str(updated_rental[7]) if updated_rental[7] is not None else None,
+        actual_return_date=str(updated_rental[8]) if updated_rental[8] is not None else None,
         status=updated_rental[9],
         total_cost=float(updated_rental[10]) if updated_rental[10] is not None else None
     )
