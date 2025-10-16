@@ -176,34 +176,12 @@ async def test_auth():
     """Quick test endpoint to check API responsiveness"""
     return {"message": "API is responding", "timestamp": datetime.utcnow().isoformat()}
 
-@router.get("/health")
+
+# Health check endpoint supporting both GET and HEAD
+@router.get("/health", include_in_schema=False)
+@router.head("/health", include_in_schema=False)
 async def health_check():
-    """Health check endpoint with performance metrics"""
-    import time
-    start_time = time.time()
-    
-    try:
-        # Test database connection
-        user = get_user("admin")
-        db_status = "connected" if user else "no_admin_user"
-        db_time = time.time() - start_time
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "database": {
-                "status": db_status,
-                "response_time_ms": round(db_time * 1000, 2)
-            },
-            "api_response_time_ms": round((time.time() - start_time) * 1000, 2)
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat(),
-            "api_response_time_ms": round((time.time() - start_time) * 1000, 2)
-        }
+    return {"status": "ok"}
 
 @router.post("/register", response_model=User)
 async def register_user(username: str, password: str, email: str, full_name: str):

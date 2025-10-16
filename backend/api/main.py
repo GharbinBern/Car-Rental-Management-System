@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import auth, vehicles, customers, rentals, reviews, loyalty, maintenance, analytics
@@ -6,6 +7,11 @@ from api.core.middleware import ErrorHandlingMiddleware
 from api.core.config import settings
 
 app = FastAPI(title="Car Rental API")
+
+# Root endpoint for health checks and uptime monitors
+@app.get("/")
+def root():
+    return {"status": "ok"}
 
 # Add custom middleware
 app.add_middleware(ErrorHandlingMiddleware)
