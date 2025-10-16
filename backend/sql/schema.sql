@@ -230,22 +230,22 @@ CREATE INDEX idx_customer_loyalty ON Customer(is_loyalty_member);
 -- =====================================
 -- Trigger to Auto-update Customer Loyalty Status
 -- =====================================
-DELIMITER $$
-CREATE TRIGGER trg_update_loyalty_status_insert
-AFTER INSERT ON LoyaltyProgram
-FOR EACH ROW
-BEGIN
-    UPDATE Customer 
-    SET is_loyalty_member = TRUE 
-    WHERE customer_id = NEW.customer_id;
-END$$
+-- DELIMITER $$
+-- CREATE TRIGGER trg_update_loyalty_status_insert
+-- AFTER INSERT ON LoyaltyProgram
+-- FOR EACH ROW
+-- BEGIN
+--     UPDATE Customer 
+--     SET is_loyalty_member = TRUE 
+--     WHERE customer_id = NEW.customer_id;
+-- END$$
 
-CREATE TRIGGER trg_update_loyalty_status_delete
-AFTER DELETE ON LoyaltyProgram
-FOR EACH ROW
-BEGIN
-    UPDATE Customer 
-    SET is_loyalty_member = FALSE 
-    WHERE customer_id = OLD.customer_id;
-END$$
-DELIMITER ;
+-- CREATE TRIGGER trg_update_loyalty_status_delete
+-- AFTER DELETE ON LoyaltyProgram
+-- FOR EACH ROW
+-- BEGIN
+--     UPDATE Customer 
+--     SET is_loyalty_member = FALSE 
+--     WHERE customer_id = OLD.customer_id;
+-- END$$
+-- DELIMITER ;
