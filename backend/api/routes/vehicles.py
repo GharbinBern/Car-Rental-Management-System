@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from backend.database.connection import connect_db
+from database.connection import connect_db
 
 router = APIRouter()
 

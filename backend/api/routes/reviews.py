@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field, validator
 from datetime import date
 from decimal import Decimal
 
-from backend.database.connection import connect_db
-from backend.api.routes.auth import get_current_active_user
+from database.connection import connect_db
+from api.routes.auth import get_current_active_user
 
 router = APIRouter()
 

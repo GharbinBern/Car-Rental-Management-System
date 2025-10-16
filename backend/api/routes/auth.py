@@ -5,8 +5,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-from backend.database.connection import connect_db
-from backend.api.core.config import settings
+from database.connection import connect_db
+from api.core.config import settings
 
 # JWT configuration (from settings)
 SECRET_KEY = settings.SECRET_KEY

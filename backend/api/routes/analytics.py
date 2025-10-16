@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from backend.database.connection import get_db_connection
-from backend.api.routes.auth import get_current_user
+from database.connection import get_db_connection
+from api.routes.auth import get_current_user
 import datetime
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])

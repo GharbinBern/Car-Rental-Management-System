@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, date
 import json
 
-from backend.database.connection import connect_db
+from database.connection import connect_db
 
 router = APIRouter()
 

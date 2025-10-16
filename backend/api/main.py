@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.routes import auth, vehicles, customers, rentals, reviews, loyalty, maintenance, analytics
-from backend.api.routes.auth import get_current_active_user
-from backend.api.core.middleware import ErrorHandlingMiddleware
-from backend.api.core.config import settings
+from api.routes import auth, vehicles, customers, rentals, reviews, loyalty, maintenance, analytics
+from api.routes.auth import get_current_active_user
+from api.core.middleware import ErrorHandlingMiddleware
+from api.core.config import settings
 
 app = FastAPI(title="Car Rental API")
 
