@@ -10,19 +10,12 @@ app = FastAPI(title="Car Rental API")
 # Add custom middleware
 app.add_middleware(ErrorHandlingMiddleware)
 
-# Build allowed origins from settings (comma-separated supported)
-origins = []
-if settings.FRONTEND_URL:
-    # support multiple comma-separated values
-    origins = [o.strip() for o in settings.FRONTEND_URL.split(',') if o.strip()]
-if not origins:
-    # sensible defaults for dev
-    origins = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-    ]
+# Restrict CORS to Vercel frontend and localhost for dev
+origins = [
+    "https://car-rental-management-system-teal.vercel.app",  # your Vercel frontend
+    "http://localhost:3000",
+    "http://localhost:5173"
+]
 
 app.add_middleware(
     CORSMiddleware,
