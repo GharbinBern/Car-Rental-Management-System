@@ -44,8 +44,11 @@ class UserInDB(User):
 
 def verify_password(plain_password, hashed_password):
     try:
-        return simple_hash(plain_password) == hashed_password
+        computed_hash = simple_hash(plain_password)
+        print(f"[DEBUG] Verifying password: plain='{plain_password}', computed_hash='{computed_hash}', db_hash='{hashed_password}'")
+        return computed_hash == hashed_password
     except Exception as e:
+        print(f"[DEBUG] Exception in verify_password: {e}")
         return False
 
 
@@ -86,18 +89,21 @@ def get_user(username: str):
 
 def authenticate_user(username: str, password: str):
     try:
+        print(f"[DEBUG] Authenticating user: username='{username}', password='{password}'")
         user = get_user(username)
         if not user:
+            print(f"[DEBUG] User '{username}' not found in DB")
             return False
-        
         # Truncate password if too long for bcrypt
         if len(password.encode('utf-8')) > 72:
             password = password[:72]
-            
         if not verify_password(password, user.hashed_password):
+            print(f"[DEBUG] Password mismatch for user '{username}'")
             return False
+        print(f"[DEBUG] User '{username}' authenticated successfully")
         return user
     except Exception as e:
+        print(f"[DEBUG] Exception in authenticate_user: {e}")
         return False
 
 
