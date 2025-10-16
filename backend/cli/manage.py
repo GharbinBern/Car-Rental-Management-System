@@ -3,23 +3,25 @@
 """
 Management CLI for operational tasks.
 
-Usage examples:
-  python cli/manage.py create-admin --username admin --password admin123 --email admin@example.com --full-name "System Admin"
-  # Or env-driven (flags override env):
-  ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 python cli/manage.py create-admin
+Usage examples (from backend directory):
+    python -m cli.manage create-admin --username admin --password admin123 --email admin@example.com --full-name "System Admin"
+    # Or env-driven (flags override env):
+    ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 python -m cli.manage create-admin
 """
+
 
 import argparse
 import hashlib
 import os
 import sys
-from pathlib import Path
 
-# Add project root to Python path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+if __name__ == "__main__" and __package__ is None:
+    # Allows running as a script: python cli/manage.py ...
+    import pathlib
+    sys.path.append(str(pathlib.Path(__file__).parent.parent))
+    __package__ = "cli"
 
-from database.connection import connect_db
+from ..database.connection import connect_db
 
 
 def _hash(password: str) -> str:
