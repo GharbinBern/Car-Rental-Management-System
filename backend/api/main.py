@@ -18,7 +18,7 @@ app.add_middleware(ErrorHandlingMiddleware)
 
 # Restrict CORS to Vercel frontend and localhost for dev
 origins = [
-    "https://car-rental-management-system-teal.vercel.app",  # your Vercel frontend
+    "https://car-rental-management-system-41xhvys29.vercel.app",  # your Vercel frontend
     "http://localhost:3000",
     "http://localhost:5173"
 ]
