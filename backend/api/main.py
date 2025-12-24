@@ -16,12 +16,16 @@ def root():
 # Add custom middleware
 app.add_middleware(ErrorHandlingMiddleware)
 
-# Restrict CORS to Vercel frontend and localhost for dev
+# CORS configuration - allow multiple Vercel deployments and localhost
 origins = [
-    "https://car-rental-management-system-41xhvys29.vercel.app",  # your Vercel frontend
+    "https://car-rental-management-system-cqykbpc93.vercel.app",  # Current Vercel frontend
+    "https://car-rental-management-system-41xhvys29.vercel.app",  # Previous Vercel frontend
     "http://localhost:3000",
     "http://localhost:5173"
 ]
+
+# For production, you can also use wildcard for all Vercel preview deployments:
+# origins = ["https://*.vercel.app", "http://localhost:3000", "http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,

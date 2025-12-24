@@ -8,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true, // Required for CORS with credentials
+  timeout: 45000, // 45 second timeout to handle Render cold starts
 })
 
 // Add auth interceptor

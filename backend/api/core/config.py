@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 	DB_PORT: int = 3306
 
 	# JWT settings
-	SECRET_KEY: str = "your-secret-key-here"
+	SECRET_KEY: str = "car-rental-project"
 	ALGORITHM: str = "HS256"
 	ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 

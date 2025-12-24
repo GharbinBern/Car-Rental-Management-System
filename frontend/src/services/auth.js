@@ -9,11 +9,12 @@ export const login = async (username, password) => {
     params.append('username', username.trim())
     params.append('password', password)
     
+    // Increased timeout for Render cold starts (free tier sleeps after inactivity)
     const response = await axios.post(`${API_URL}/auth/login`, params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      timeout: 10000 // 10 second timeout
+      timeout: 45000 // 45 second timeout to handle Render wake-up time
     })
     
     if (response.data.access_token) {
@@ -32,7 +33,11 @@ export const login = async (username, password) => {
     console.error('Login error:', error)
     
     if (error.code === 'ECONNABORTED') {
-      throw 'Connection timeout. Please check your network.'
+      throw 'Connection timeout. The server may be waking up (Render free tier sleeps after inactivity). Please try again in a moment.'
+    }
+    
+    if (error.code === 'ERR_NETWORK') {
+      throw 'Network error. Please check: 1) Your internet connection, 2) The server may be starting up (wait 30s and retry), 3) CORS configuration on the backend.'
     }
     
     if (error.response?.status === 401) {
