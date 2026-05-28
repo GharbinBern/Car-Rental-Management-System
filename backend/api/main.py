@@ -39,15 +39,21 @@ def _ensure_users():
         """)
         # admin — sha256('admin123'), auto-upgraded to bcrypt on first login
         cursor.execute("""
-            INSERT IGNORE INTO users (username, password, email, full_name, disabled)
+            INSERT INTO users (username, password, email, full_name, disabled)
             VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
                     'admin@prestigedrive.com', 'Administrator', FALSE)
+            ON DUPLICATE KEY UPDATE
+                password = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+                disabled = FALSE
         """)
         # demo — sha256('demo123'), read-only account
         cursor.execute("""
-            INSERT IGNORE INTO users (username, password, email, full_name, disabled)
+            INSERT INTO users (username, password, email, full_name, disabled)
             VALUES ('demo', 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791',
                     'demo@prestigedrive.com', 'Demo User', FALSE)
+            ON DUPLICATE KEY UPDATE
+                password = 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791',
+                disabled = FALSE
         """)
         db.commit()
         cursor.close()
