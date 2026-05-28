@@ -175,8 +175,8 @@ export default function Reports() {
 
         <div className="bg-white border border-[#e5e5e5] p-6">
           <div className="mb-5">
-            <Label>Fleet composition</Label>
-            <p className="text-base font-medium text-[#1a1a1a] mt-1">Status breakdown</p>
+            <Label>Status breakdown</Label>
+            
           </div>
           {donutData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -223,7 +223,7 @@ export default function Reports() {
         <div className="bg-white border border-[#e5e5e5] p-6">
           <div className="mb-5">
             <Label>Locations</Label>
-            <p className="text-base font-medium text-[#1a1a1a] mt-1">Fleet by branch</p>
+            <p className="text-base font-medium text-[#1a1a1a] mt-1">By branch</p>
           </div>
           {fleetData?.fleet_by_branch?.length > 0 ? (
             <div className="space-y-3">

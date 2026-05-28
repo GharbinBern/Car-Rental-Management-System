@@ -25,7 +25,14 @@
       "Bash(sed -i '' 's/{!isDemo && showAddModal && <VehicleModal/{showAddModal \\\\&\\\\& <VehicleModal/' Vehicles.jsx)",
       "Bash(sed -i '' 's/{!isDemo && editingVehicle && \\(/{editingVehicle \\\\&\\\\& \\(/' Vehicles.jsx)",
       "Bash(sed -i '' '/const { isDemo } = useAuth\\(\\)/d' Rentals.jsx)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Bash(sed -i '' 's/fleet composition \\(donut\\)/vehicle breakdown \\(donut\\)/' README.md)",
+      "Bash(sed -i '' 's/demo fleet \\(relative dates\\)/demo data \\(relative dates\\)/' README.md)",
+      "Bash(sed -i '' 's/List fleet/List vehicles/' README.md)",
+      "Bash(sed -i '' 's/Fleet overview/Vehicle overview/' README.md)",
+      "Bash(sed -i '' 's/<Label>Fleet composition<\\\\/Label>/<Label>Status breakdown<\\\\/Label>/' Reports.jsx)",
+      "Bash(sed -i '' 's/<p className=\"text-base font-medium text-\\\\[#1a1a1a\\\\] mt-1\">Status breakdown<\\\\/p>//' Reports.jsx)",
+      "Bash(sed -i '' 's/<p className=\"text-base font-medium text-\\\\[#1a1a1a\\\\] mt-1\">Fleet by branch<\\\\/p>/<p className=\"text-base font-medium text-[#1a1a1a] mt-1\">By branch<\\\\/p>/' Reports.jsx)"
     ]
   }
 }
