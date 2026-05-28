@@ -17,6 +17,45 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _ensure_users():
+    """
+    Create the users table and default accounts if they don't exist.
+    Safe to run on every startup — uses INSERT IGNORE / IF NOT EXISTS.
+    """
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                full_name VARCHAR(100) NOT NULL,
+                disabled BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP NULL
+            )
+        """)
+        # admin — sha256('admin123'), auto-upgraded to bcrypt on first login
+        cursor.execute("""
+            INSERT IGNORE INTO users (username, password, email, full_name, disabled)
+            VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+                    'admin@prestigedrive.com', 'Administrator', FALSE)
+        """)
+        # demo — sha256('demo123'), read-only account
+        cursor.execute("""
+            INSERT IGNORE INTO users (username, password, email, full_name, disabled)
+            VALUES ('demo', 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791',
+                    'demo@prestigedrive.com', 'Demo User', FALSE)
+        """)
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        logger.warning(f"User seed skipped: {e}")
+
+
 def _refresh_demo_dates():
     """
     Keep demo data perpetually valid.
@@ -59,7 +98,8 @@ async def _demo_refresh_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _refresh_demo_dates()                             # run once on cold start
+    _ensure_users()                                   # create admin + demo if missing
+    _refresh_demo_dates()                             # keep demo dates current
     task = asyncio.create_task(_demo_refresh_loop())  # then every 24 h
     yield
     task.cancel()
