@@ -47,7 +47,7 @@ def get_rentals(
     cursor = db.cursor()
     
     query = """
-        SELECT 
+        SELECT
             r.rental_id,
             r.customer_id,
             CONCAT(c.first_name, ' ', c.last_name) as customer_name,
@@ -57,7 +57,13 @@ def get_rentals(
             DATE(r.pickup_datetime) as pickup_date,
             DATE(r.return_datetime) as expected_return_date,
             DATE(r.actual_return_datetime) as actual_return_date,
-            r.status,
+            CASE
+                WHEN r.status = 'Active'
+                     AND r.actual_return_datetime IS NULL
+                     AND r.return_datetime < NOW()
+                THEN 'Overdue'
+                ELSE r.status
+            END as effective_status,
             r.total_cost
         FROM Rental r
         JOIN Customer c ON r.customer_id = c.customer_id
@@ -112,7 +118,7 @@ def get_rental(rental_id: int):
     cursor = db.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             r.rental_id,
             r.customer_id,
             CONCAT(c.first_name, ' ', c.last_name) as customer_name,
@@ -120,9 +126,15 @@ def get_rental(rental_id: int):
             CONCAT(v.brand, ' ', v.model) as vehicle_info,
             v.daily_rate,
             DATE(r.pickup_datetime) as pickup_date,
-            DATE(r.return_datetime) as return_date,
+            DATE(r.return_datetime) as expected_return_date,
             DATE(r.actual_return_datetime) as actual_return_date,
-            r.status,
+            CASE
+                WHEN r.status = 'Active'
+                     AND r.actual_return_datetime IS NULL
+                     AND r.return_datetime < NOW()
+                THEN 'Overdue'
+                ELSE r.status
+            END as effective_status,
             r.total_cost
         FROM Rental r
         JOIN Customer c ON r.customer_id = c.customer_id

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=admin&password=admin123\")",
+      "Bash(curl -s http://localhost:8000/api/customers/ -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc4MDA1ODc3NX0.qqrzWXh9zODeXi1G_K0tlm_oewZ03gI5rzEIsom97bw')",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(str\\(d\\)[:300]\\)\")",
+      "WebFetch(domain:www.imaginstudio.com)",
+      "Bash(npm list *)",
+      "Bash(mysql -u root -pSevenbern101 car_rental_db -e ' *)",
+      "Bash(nohup /Users/gharbinbern/Documents/Hub/Car-Rental-Management-System/.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(sed -i '' 's/Fleet Management<\\\\/p>/Car Rental<\\\\/p>/' App.jsx)",
+      "Bash(sed -i '' 's/Fleet inventory/Vehicle inventory/' pages/Vehicles.jsx)",
+      "Bash(sed -i '' 's/Add to fleet/Add vehicle/' pages/Vehicles.jsx)",
+      "Bash(sed -i '' 's/Fleet Dashboard/Rental Overview/' pages/Dashboard.jsx)",
+      "Bash(sed -i '' 's/Fleet utilization/Occupancy rate/' pages/Dashboard.jsx)",
+      "Bash(sed -i '' 's/Fleet Management Platform/Luxury Car Rental/' pages/Login.jsx)",
+      "Bash(sed -i '' 's/Your fleet,<br \\\\/>precisely<br \\\\/>managed\\\\./Your rentals,<br \\\\/>always on time./' pages/Login.jsx)",
+      "Bash(sed -i '' 's/Complete visibility over your luxury fleet — vehicles, bookings, clients, and revenue in one precision-built system\\\\./Complete visibility over every booking, vehicle, and client — in one precision-built rental platform./' pages/Login.jsx)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(openssl rand *)",
+      "Bash(sed -i '' 's/setUsername\\('\\\\''admin'\\\\''\\); setPassword\\('\\\\''admin123'\\\\''\\)/setUsername\\('\\\\''demo'\\\\''\\); setPassword\\('\\\\''demo123'\\\\''\\)/' /Users/gharbinbern/Documents/Hub/Car-Rental-Management-System/frontend/src/pages/Login.jsx)",
+      "Bash(sed -i '' 's/admin \\\\&nbsp;\\\\;\\\\&nbsp;\\\\; admin123/demo \\\\&nbsp;\\\\;\\\\&nbsp;\\\\; demo123/' /Users/gharbinbern/Documents/Hub/Car-Rental-Management-System/frontend/src/pages/Login.jsx)",
+      "Bash(sed -i '' '/const { isDemo } = useAuth\\(\\)/d' Vehicles.jsx)",
+      "Bash(perl -i -0pe 's/\\\\{!isDemo && \\\\\\(\\\\s*\\(<button[^<]*Add vehicle[^}]*>[\\\\s\\\\S]*?<\\\\/button>\\\\s*\\)\\\\\\)\\\\}/\\\\1/g' Vehicles.jsx)",
+      "Bash(sed -i '' 's/{!isDemo && showAddModal && <VehicleModal/{showAddModal \\\\&\\\\& <VehicleModal/' Vehicles.jsx)",
+      "Bash(sed -i '' 's/{!isDemo && editingVehicle && \\(/{editingVehicle \\\\&\\\\& \\(/' Vehicles.jsx)",
+      "Bash(sed -i '' '/const { isDemo } = useAuth\\(\\)/d' Rentals.jsx)",
+      "Bash(python3)"
+    ]
+  }
+}

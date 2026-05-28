@@ -1,356 +1,279 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiService } from '../services/api'
 import { formatEuro } from '../utils/currency'
+import { ArrowRight, AlertCircle } from 'lucide-react'
 import {
-  TruckIcon,
-  UserGroupIcon,
-  CurrencyEuroIcon,
-  ClipboardDocumentListIcon,
-  ChartBarIcon,
-  CalendarDaysIcon
-} from '@heroicons/react/24/outline'
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area
+} from 'recharts'
+
+function Label({ children }) {
+  return <p className="text-[10px] uppercase tracking-[0.15em] text-[#a0a0a0]">{children}</p>
+}
+
+function StatCard({ label, value, sub, alert }) {
+  return (
+    <div className="bg-white border border-[#e5e5e5] p-6">
+      <Label>{label}</Label>
+      <p className="text-2xl font-light text-[#1a1a1a] mt-3 tabular-nums tracking-tight truncate">{value}</p>
+      {sub && <p className={`text-xs mt-2 ${alert ? 'text-red-500' : 'text-[#a0a0a0]'}`}>{sub}</p>}
+    </div>
+  )
+}
+
+function StatusBadge({ status }) {
+  return (
+    <span className="text-xs text-[#5c5c5c] border border-[#e5e5e5] rounded px-2 py-0.5 capitalize">
+      {status}
+    </span>
+  )
+}
+
+const ChartTip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-[#e5e5e5] rounded px-3 py-2 text-xs shadow-lg">
+      <p className="text-[#a0a0a0] mb-1">{label}</p>
+      <p className="text-[#1a1a1a] font-semibold">{formatEuro(payload[0]?.value || 0)}</p>
+    </div>
+  )
+}
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    totalVehicles: 0,
-    availableVehicles: 0,
-    activeRentals: 0,
-    totalCustomers: 0,
-    revenueToday: 0,
-    revenueThisMonth: 0
-  })
+  const navigate = useNavigate()
+  const [stats, setStats] = useState({ totalVehicles: 0, availableVehicles: 0, activeRentals: 0, totalCustomers: 0, revenueThisMonth: 0, overdueReturns: 0, avgDuration: 0 })
   const [recentRentals, setRecentRentals] = useState([])
+  const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const load = async () => {
       try {
-        const [vehiclesRes, rentalsRes, customersRes, revenueRes] = await Promise.all([
+        const [vr, rr, cr, rev] = await Promise.all([
           apiService.getVehicles(),
           apiService.getRentals(),
           apiService.getCustomers(),
-          apiService.getRevenueAnalytics('month').catch(() => ({ data: { data: [] } }))
+          apiService.getRevenueAnalytics('month').catch(() => ({ data: { data: [] } })),
         ])
+        const vehicles = vr.data
+        const rentals = rr.data
+        const customers = cr.data
+        const revenueData = rev.data?.data || []
 
-        const vehicles = vehiclesRes.data
-        const rentals = rentalsRes.data
-        const customers = customersRes.data
-        const revenueData = revenueRes.data?.data || []
+        const available = vehicles.filter(v => v.status?.toLowerCase() === 'available').length
+        const rented = vehicles.filter(v => v.status?.toLowerCase() === 'rented').length
+        const active = rentals.filter(r => r.status?.toLowerCase() === 'active').length
+        const revenue = revenueData.reduce((s, i) => s + (parseFloat(i.revenue) || 0), 0)
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const overdue = rentals.filter(r => r.status?.toLowerCase() === 'active' && r.expected_return_date && new Date(r.expected_return_date) < today).length
+        const completed = rentals.filter(r => r.status?.toLowerCase() === 'completed' && r.pickup_date && r.expected_return_date)
+        const avgDuration = completed.length > 0
+          ? Math.round(completed.reduce((s, r) => s + (new Date(r.expected_return_date) - new Date(r.pickup_date)) / 86400000, 0) / completed.length)
+          : 0
 
-        // Calculate statistics
-        const availableVehicles = vehicles.filter(v => v.status?.toLowerCase() === 'available').length
-        const activeRentals = rentals.filter(r => r.status?.toLowerCase() === 'active').length
-        
-        // Calculate revenue from analytics API
-        const revenueThisMonth = revenueData.reduce((sum, item) => sum + (parseFloat(item.revenue) || 0), 0)
-        
-        // For today's revenue, use active rentals
-        const revenueToday = rentals
-          .filter(r => r.status?.toLowerCase() === 'active')
-          .reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0)
-
-        setStats({
-          totalVehicles: vehicles.length,
-          availableVehicles,
-          activeRentals,
-          totalCustomers: customers.length,
-          revenueToday,
-          revenueThisMonth
-        })
-
-        // Get recent rentals
-        setRecentRentals(
-          rentals
-            .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
-            .slice(0, 5)
-        )
-
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-        // Set some default data so the dashboard isn't empty
-        setStats({
-          totalVehicles: 0,
-          availableVehicles: 0,
-          activeRentals: 0,
-          totalCustomers: 0,
-          revenueToday: 0,
-          revenueThisMonth: 0
-        })
-      } finally {
-        setLoading(false)
-      }
+        setStats({ totalVehicles: vehicles.length, availableVehicles: available, activeRentals: active, rentedVehicles: rented, totalCustomers: customers.length, revenueThisMonth: revenue, overdueReturns: overdue, avgDuration })
+        setRecentRentals(rentals.sort((a, b) => new Date(b.pickup_date) - new Date(a.pickup_date)).slice(0, 6))
+        const fmtPeriod = (p = '') => {
+          if (!p) return ''
+          const parts = p.split(' ')
+          if (parts.length === 2) return parts[0].slice(0, 3) + " '" + parts[1].slice(2)
+          try {
+            const d = new Date(p.length <= 7 ? p + '-01' : p)
+            if (isNaN(d)) return p
+            return p.length > 7
+              ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+              : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(' ', " '")
+          } catch { return p }
+        }
+        setChartData(revenueData.slice(-8).map(d => ({ period: fmtPeriod(d.period), revenue: parseFloat(d.revenue) || 0, rentals: d.rental_count || 0 })))
+      } catch (err) { console.error(err) }
+      finally { setLoading(false) }
     }
-
-    fetchDashboardData()
+    load()
   }, [])
 
-  if (loading) return <div className="p-4">Loading dashboard...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center py-32">
+      <p className="text-[10px] uppercase tracking-[0.25em] text-[#a0a0a0]">Loading</p>
+    </div>
+  )
+
+  const utilizationPct = stats.totalVehicles > 0 ? Math.round(((stats.rentedVehicles ?? stats.activeRentals) / stats.totalVehicles) * 100) : 0
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-medium mb-6">Dashboard</h2>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Vehicles */}
-        <div className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <TruckIcon className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-500">Total Vehicles</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalVehicles}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span className="text-green-600">Available: {stats.availableVehicles}</span>
-              <span className="text-orange-600">Rented: {stats.totalVehicles - stats.availableVehicles}</span>
-            </div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-500 h-2 rounded-full" 
-                style={{width: `${(stats.availableVehicles / stats.totalVehicles) * 100}%`}}
-              ></div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-end justify-between">
+        <div>
+          <Label>Operations overview</Label>
+          <h1 className="text-3xl font-semibold text-[#1a1a1a] mt-1.5 tracking-tight">Rental Overview</h1>
         </div>
-
-        {/* Total Customers */}
-        <div className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <UserGroupIcon className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-500">Total Customers</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalCustomers}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Registered users</p>
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                +{Math.floor(stats.totalCustomers * 0.15)} this month
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Rentals */}
-        <div className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-orange-500">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ClipboardDocumentListIcon className="h-8 w-8 text-orange-600" />
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-500">Active Rentals</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.activeRentals}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Currently ongoing</p>
-              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                {Math.round((stats.activeRentals / stats.totalVehicles) * 100)}% utilization
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Revenue */}
-        <div className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CurrencyEuroIcon className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-500">Monthly Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatEuro(stats.revenueThisMonth)}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">{formatEuro(stats.revenueToday)} active rentals</p>
-              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                +12.5% vs last month
-              </span>
-            </div>
-          </div>
-        </div>
+        <p className="text-xs text-[#a0a0a0] pb-1">{today}</p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
-          <h3 className="text-lg font-semibold mb-2">Quick Rent</h3>
-          <p className="text-blue-100 mb-4">Process a new rental quickly</p>
-          <button 
-            onClick={() => window.location.href = '/rentals'}
-            className="bg-white text-blue-600 px-4 py-2 rounded font-medium hover:bg-blue-50 transition-colors"
-          >
-            New Rental
-          </button>
+      {/* Hero — utilization */}
+      <div className="bg-white border border-[#e5e5e5] p-8">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <Label>Occupancy rate</Label>
+            <div className="flex items-baseline gap-1.5 mt-2">
+              <span className="text-6xl font-light text-[#1a1a1a] tabular-nums tracking-tight">{utilizationPct}</span>
+              <span className="text-2xl font-light text-[#a0a0a0]">%</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-[#1a1a1a]">{stats.rentedVehicles ?? stats.activeRentals} vehicles on rent</p>
+            <p className="text-xs text-[#a0a0a0] mt-1">{stats.availableVehicles} available · {Math.max(0, stats.totalVehicles - (stats.rentedVehicles ?? 0) - stats.availableVehicles)} other</p>
+          </div>
         </div>
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
-          <h3 className="text-lg font-semibold mb-2">Add Vehicle</h3>
-          <p className="text-green-100 mb-4">Expand your fleet</p>
-          <button 
-            onClick={() => window.location.href = '/vehicles'}
-            className="bg-white text-green-600 px-4 py-2 rounded font-medium hover:bg-green-50 transition-colors"
-          >
-            Add Vehicle
-          </button>
+
+        <div className="space-y-1.5">
+          <div className="w-full bg-[#f0f0f0] rounded-full h-1 overflow-hidden">
+            <div className="bg-[#1a1a1a] h-full rounded-full transition-all duration-700" style={{ width: `${utilizationPct}%` }} />
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[9px] text-[#c0c0c0] uppercase tracking-widest">0%</span>
+            <span className="text-[9px] text-[#c0c0c0] uppercase tracking-widest">100%</span>
+          </div>
         </div>
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
-          <h3 className="text-lg font-semibold mb-2">View Reports</h3>
-          <p className="text-purple-100 mb-4">Analyze business performance</p>
-          <button 
-            onClick={() => window.location.href = '/reports'}
-            className="bg-white text-purple-600 px-4 py-2 rounded font-medium hover:bg-purple-50 transition-colors"
-          >
-            Generate Report
-          </button>
-        </div>
+
+        {stats.overdueReturns > 0 && (
+          <div className="mt-5 flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded w-fit">
+            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+            <span className="text-xs text-red-600">{stats.overdueReturns} overdue return{stats.overdueReturns > 1 ? 's' : ''} — action required</span>
+          </div>
+        )}
       </div>
 
-      {/* Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Fleet Utilization Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <ChartBarIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <h3 className="text-lg font-medium">Fleet Utilization</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Economy Cars</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{width: '75%'}}></div>
-                </div>
-                <span className="text-sm font-medium">75%</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Luxury Cars</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{width: '60%'}}></div>
-                </div>
-                <span className="text-sm font-medium">60%</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">SUVs</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
-                </div>
-                <span className="text-sm font-medium">85%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Popular Vehicles */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <TruckIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <h3 className="text-lg font-medium">Popular Vehicles</h3>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-medium text-sm">1</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Toyota RAV4</p>
-                  <p className="text-xs text-gray-500">SUV</p>
-                </div>
-              </div>
-              <span className="text-sm text-gray-600">24 rentals</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-medium text-sm">2</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">BMW 330i</p>
-                  <p className="text-xs text-gray-500">Luxury</p>
-                </div>
-              </div>
-              <span className="text-sm text-gray-600">18 rentals</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <span className="text-yellow-600 font-medium text-sm">3</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Toyota Corolla</p>
-                  <p className="text-xs text-gray-500">Economy</p>
-                </div>
-              </div>
-              <span className="text-sm text-gray-600">15 rentals</span>
-            </div>
-          </div>
-        </div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total vehicles" value={stats.totalVehicles} sub={`${stats.availableVehicles} available now`} />
+        <StatCard label="Customers" value={stats.totalCustomers} />
+        <StatCard label="Monthly revenue" value={formatEuro(stats.revenueThisMonth)} />
+        <StatCard label="Overdue returns" value={stats.overdueReturns}
+          sub={stats.overdueReturns > 0 ? 'Needs attention' : 'All on schedule'} alert={stats.overdueReturns > 0} />
       </div>
 
-      {/* Recent Rentals */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b flex items-center">
-          <CalendarDaysIcon className="h-5 w-5 text-gray-500 mr-2" />
-          <h3 className="text-lg font-medium">Recent Rentals</h3>
-        </div>
-        <div className="p-6">
-          {recentRentals.length > 0 ? (
-            <div className="space-y-4">
-              {recentRentals.map(rental => (
-                <div key={rental.rental_id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <TruckIcon className="h-5 w-5 text-blue-600" />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{rental.customer_name}</p>
-                      <p className="text-sm text-gray-500">{rental.vehicle_info}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">
-                        {new Date(rental.start_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      rental.status === 'Active' 
-                        ? 'bg-orange-100 text-orange-800' 
-                        : rental.status === 'Completed'
-                        ? 'bg-green-100 text-green-800'
-                        : rental.status === 'Reserved'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {rental.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-white border border-[#e5e5e5] p-6">
+          <div className="mb-5">
+            <Label>Revenue</Label>
+            <p className="text-base font-medium text-[#1a1a1a] mt-1">Monthly breakdown</p>
+          </div>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={20}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="period" tick={{ fill: '#a0a0a0', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#a0a0a0', fontSize: 10 }} axisLine={false} tickLine={false}
+                  tickFormatter={v => `€${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`} />
+                <Tooltip content={<ChartTip />} cursor={{ fill: '#f7f7f7' }} />
+                <Bar dataKey="revenue" fill="#1a1a1a" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
-            <div className="text-center py-8">
-              <ClipboardDocumentListIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No recent rentals found</p>
-            </div>
+            <div className="h-[200px] flex items-center justify-center text-sm text-[#c0c0c0]">No revenue data yet</div>
           )}
         </div>
+
+        <div className="bg-white border border-[#e5e5e5] p-6">
+          <div className="mb-5">
+            <Label>Rental volume</Label>
+            <p className="text-base font-medium text-[#1a1a1a] mt-1">Count per period</p>
+          </div>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1c69d4" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="#1c69d4" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="period" tick={{ fill: '#a0a0a0', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#a0a0a0', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px', color: '#1a1a1a', fontSize: 11 }} cursor={{ stroke: '#e5e5e5' }} />
+                <Area type="monotone" dataKey="rentals" stroke="#1c69d4" strokeWidth={1.5} fill="url(#grad)" dot={false} activeDot={{ r: 3, fill: '#1c69d4', strokeWidth: 0 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-sm text-[#c0c0c0]">No data yet</div>
+          )}
+        </div>
+      </div>
+
+      {/* Secondary metrics */}
+      {stats.avgDuration > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white border border-[#e5e5e5] p-6">
+            <Label>Avg rental duration</Label>
+            <div className="flex items-baseline gap-2 mt-3">
+              <span className="text-4xl font-light text-[#1a1a1a] tabular-nums">{stats.avgDuration}</span>
+              <span className="text-sm text-[#a0a0a0]">days</span>
+            </div>
+            <p className="text-xs text-[#c0c0c0] mt-2">Based on completed rentals</p>
+          </div>
+          <div className="bg-white border border-[#e5e5e5] p-6">
+            <Label>Revenue per vehicle</Label>
+            <div className="mt-3 overflow-hidden">
+              <span className="text-2xl font-light text-[#1a1a1a] tabular-nums truncate block">
+                {stats.totalVehicles > 0 ? formatEuro(stats.revenueThisMonth / stats.totalVehicles) : '—'}
+              </span>
+            </div>
+            <p className="text-xs text-[#c0c0c0] mt-2">This month</p>
+          </div>
+          <div className="bg-white border border-[#e5e5e5] p-6">
+            <Label>Active rentals</Label>
+            <div className="mt-3">
+              <span className="text-4xl font-light text-[#1a1a1a] tabular-nums">{stats.activeRentals}</span>
+            </div>
+            <p className="text-xs text-[#c0c0c0] mt-2">Currently ongoing</p>
+          </div>
+        </div>
+      )}
+
+      {/* Recent rentals */}
+      <div className="bg-white border border-[#e5e5e5] overflow-hidden">
+        <div className="px-6 py-5 border-b border-[#ebebeb] flex items-center justify-between">
+          <div>
+            <Label>Recent activity</Label>
+            <p className="text-base font-medium text-[#1a1a1a] mt-0.5">Latest rentals</p>
+          </div>
+          <button onClick={() => navigate('/rentals')}
+            className="flex items-center gap-1.5 text-xs text-[#a0a0a0] hover:text-[#1c69d4] transition-colors">
+            View all <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        {recentRentals.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#ebebeb]">
+                {['Customer', 'Vehicle', 'Start', 'Status'].map(h => (
+                  <th key={h} className="px-6 py-3 text-left text-[10px] font-medium text-[#a0a0a0] uppercase tracking-[0.1em]">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#ebebeb]">
+              {recentRentals.map(r => (
+                <tr key={r.rental_id} className="hover:bg-[#fafafa] transition-colors">
+                  <td className="px-6 py-4 font-medium text-[#1a1a1a]">{r.customer_name}</td>
+                  <td className="px-6 py-4 text-[#5c5c5c]">{r.vehicle_info}</td>
+                  <td className="px-6 py-4 text-[#a0a0a0] tabular-nums text-xs">{r.pickup_date ? new Date(r.pickup_date).toLocaleDateString() : '—'}</td>
+                  <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="py-16 text-center">
+            <p className="text-xs text-[#c0c0c0] uppercase tracking-widest">No recent rentals</p>
+          </div>
+        )}
       </div>
     </div>
   )

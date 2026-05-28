@@ -24,16 +24,20 @@ class CustomerCreate(CustomerBase):
 
 
 class CustomerUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    first_name: Optional[str] = Field(None, min_length=2, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, pattern='^\\+?1?\\d{9,15}$')
-    license_number: Optional[str] = Field(None, min_length=5, max_length=20)
-    address: Optional[str] = Field(None, min_length=5, max_length=200)
+    phone: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    license_number: Optional[str] = Field(None, max_length=50)
+    country_of_residence: Optional[str] = Field(None, max_length=50)
+    is_loyalty_member: Optional[bool] = None
 
 
 class CustomerOut(CustomerBase):
     customer_id: int
     customer_code: str
+    phone: Optional[str] = None  # no pattern constraint on output — stores any format
 
 
 @router.get("/", response_model=List[CustomerOut])
@@ -285,7 +289,7 @@ def update_customer(customer_id: int, customer: CustomerUpdate):
         email=updated_customer[4],
         phone=updated_customer[5],
         license_number=updated_customer[6],
-        date_of_birth=updated_customer[7],
+        date_of_birth=updated_customer[7].strftime('%Y-%m-%d') if updated_customer[7] else None,
         country_of_residence=updated_customer[8],
-        is_loyalty_member=updated_customer[9]
+        is_loyalty_member=bool(updated_customer[9])
     )

@@ -29,18 +29,23 @@ api.interceptors.request.use(
   }
 )
 
-// Global 401 handler: redirect to login when token is missing/expired
+// Global response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
-      // Clear stored user and redirect to login
-      try {
-        localStorage.removeItem('user')
-      } catch {}
+    const status = error?.response?.status
+    if (status === 401) {
+      try { localStorage.removeItem('user') } catch {}
       if (typeof window !== 'undefined' && window.location?.pathname !== '/login') {
         const from = encodeURIComponent(window.location.pathname + window.location.search)
         window.location.href = `/login?from=${from}`
+      }
+    }
+    // 403 demo restriction — fire a global event so the UI can show a nice message
+    if (status === 403) {
+      const detail = error?.response?.data?.detail || ''
+      if (detail.toLowerCase().includes('demo')) {
+        window.dispatchEvent(new CustomEvent('demo-blocked', { detail }))
       }
     }
     return Promise.reject(error)

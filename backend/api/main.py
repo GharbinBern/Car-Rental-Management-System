@@ -1,20 +1,101 @@
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from contextlib import asynccontextmanager
 from api.routes import auth, vehicles, customers, rentals, reviews, loyalty, maintenance, analytics
 from api.routes.auth import get_current_active_user
 from api.core.middleware import ErrorHandlingMiddleware
 from api.core.config import settings
+from database.connection import connect_db
+from jose import jwt, JWTError
 import re
+import asyncio
+import logging
 
-app = FastAPI(title="Car Rental API")
+logger = logging.getLogger(__name__)
+
+
+def _refresh_demo_dates():
+    """
+    Keep demo data perpetually valid.
+    - Active rentals expiring within 3 days → extend return date 14 days from now.
+    - Reserved rentals starting in the past → push start date 7 days from now.
+    Runs on startup and every 24 h so the demo looks realistic for any visitor.
+    """
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        # Extend active rentals that are overdue or nearly due
+        cursor.execute("""
+            UPDATE Rental
+            SET return_datetime = DATE_ADD(NOW(), INTERVAL 14 DAY)
+            WHERE status = 'Active'
+              AND actual_return_datetime IS NULL
+              AND return_datetime < DATE_ADD(NOW(), INTERVAL 3 DAY)
+        """)
+        # Push reserved rentals whose pickup has already passed
+        cursor.execute("""
+            UPDATE Rental
+            SET pickup_datetime  = DATE_ADD(NOW(), INTERVAL 7  DAY),
+                return_datetime  = DATE_ADD(NOW(), INTERVAL 14 DAY)
+            WHERE status = 'Reserved'
+              AND actual_return_datetime IS NULL
+              AND pickup_datetime < NOW()
+        """)
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        logger.warning(f"Demo refresh skipped: {e}")
+
+
+async def _demo_refresh_loop():
+    while True:
+        await asyncio.sleep(24 * 3600)   # every 24 hours
+        _refresh_demo_dates()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _refresh_demo_dates()                             # run once on cold start
+    task = asyncio.create_task(_demo_refresh_loop())  # then every 24 h
+    yield
+    task.cancel()
+
+
+class DemoReadOnlyMiddleware(BaseHTTPMiddleware):
+    """Block all write operations for the demo account."""
+    WRITE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
+    # Allow login/register regardless
+    EXEMPT_PATHS = {"/api/auth/login", "/api/auth/health", "/"}
+
+    async def dispatch(self, request, call_next):
+        if request.method in self.WRITE_METHODS and request.url.path not in self.EXEMPT_PATHS:
+            token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+            if token:
+                try:
+                    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                    if payload.get("sub") == "demo":
+                        return JSONResponse(
+                            status_code=403,
+                            content={"detail": "Demo account is read-only. Contact us for full access."}
+                        )
+                except JWTError:
+                    pass
+        return await call_next(request)
+
+
+app = FastAPI(title="Car Rental API", lifespan=lifespan)
 
 # Root endpoint for health checks and uptime monitors
 @app.get("/")
 def root():
     return {"status": "ok"}
 
-# Add custom middleware
+# Add custom middleware (order matters — outermost runs first)
+app.add_middleware(DemoReadOnlyMiddleware)
 app.add_middleware(ErrorHandlingMiddleware)
 
 # CORS configuration - allow all Vercel deployments and localhost
@@ -55,7 +136,7 @@ app.include_router(
     vehicles.router,
     prefix="/api/vehicles",
     tags=["vehicles"],
-    # Temporarily removing auth for testing: dependencies=[Depends(get_current_active_user)]
+    dependencies=[Depends(get_current_active_user)]
 )
 app.include_router(
     customers.router,
@@ -66,8 +147,8 @@ app.include_router(
 app.include_router(
     rentals.router,
     prefix="/api/rentals",
-    tags=["rentals"]
-    # Temporarily removing auth for testing: dependencies=[Depends(get_current_active_user)]
+    tags=["rentals"],
+    dependencies=[Depends(get_current_active_user)]
 )
 app.include_router(
     loyalty.router,
@@ -81,11 +162,10 @@ app.include_router(
     tags=["reviews"],
     dependencies=[Depends(get_current_active_user)]
 )
-
 app.include_router(
     maintenance.router,
     prefix="/api/maintenance",
     tags=["maintenance"],
-    # Temporarily removing auth for testing: dependencies=[Depends(get_current_active_user)]
+    dependencies=[Depends(get_current_active_user)]
 )
 app.include_router(analytics.router)

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { ArrowRight } from 'lucide-react'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -10,104 +11,116 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const searchParams = new URLSearchParams(location.search)
-  const fromQuery = searchParams.get('from')
+  const fromQuery = new URLSearchParams(location.search).get('from')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    
-    // Quick validation
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password')
-      return
-    }
-    
+    if (!username.trim() || !password.trim()) { setError('Please enter both fields'); return }
     setLoading(true)
-
     try {
       await login(username, password)
-      // Navigate to the page they tried to visit or to dashboard
-  const origin = location.state?.from?.pathname || fromQuery || '/'
-      navigate(origin)
+      navigate(location.state?.from?.pathname || fromQuery || '/')
     } catch (err) {
-      setError(typeof err === 'string' ? err : 'Failed to log in. Please check your credentials.')
-    } finally {
-      setLoading(false)
-    }
+      setError(typeof err === 'string' ? err : 'Invalid credentials')
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    <div className="min-h-screen bg-white flex">
+      {/* Left — brand panel */}
+      <div className="hidden lg:flex flex-col justify-between w-[480px] shrink-0 px-14 py-12 bg-[#f7f7f7] border-r border-[#e5e5e5]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#1a1a1a] rounded flex items-center justify-center">
+            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M19 17H5M4 7l2.5 6h11L20 7H4Z" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="7.5" cy="17" r="2" /><circle cx="16.5" cy="17" r="2" />
             </svg>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Car Rental Management
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
+          <span className="text-sm font-semibold text-[#1a1a1a] tracking-tight">Prestige Drive</span>
+        </div>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#a0a0a0] mb-5">Luxury Car Rental</p>
+          <h1 className="text-[48px] font-light text-[#1a1a1a] leading-[1.1] tracking-tight">
+            Your rentals,<br />always on time.
+          </h1>
+          <p className="text-sm text-[#5c5c5c] mt-6 max-w-xs leading-relaxed">
+            Complete visibility over every booking, vehicle, and client. In one precision-built rental platform.
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
+
+        <div className="flex items-center gap-10">
+          {['Vehicles tracked', 'Active bookings', 'Uptime guarantee'].map(label => (
+            <div key={label}>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#a0a0a0]">{label}</p>
             </div>
-          )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="username" className="sr-only">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+          ))}
+        </div>
+      </div>
+
+      {/* Right — form */}
+      <div className="flex-1 flex items-center justify-center px-8 bg-white">
+        <div className="w-full max-w-[360px]">
+          <div className="flex items-center gap-2 mb-10 lg:hidden">
+            <div className="w-7 h-7 bg-[#1a1a1a] rounded flex items-center justify-center">
+              <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M19 17H5M4 7l2.5 6h11L20 7H4Z" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="7.5" cy="17" r="2" /><circle cx="16.5" cy="17" r="2" />
+              </svg>
             </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            <span className="text-sm font-semibold text-[#1a1a1a]">Prestige Drive</span>
           </div>
 
-          <div>
+          {/* <p className="text-[10px] uppercase tracking-[0.25em] text-[#a0a0a0] mb-2">Secure access</p> */}
+          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-6 tracking-tight">Sign in</h2>
+
+          {/* Demo access banner */}
+          <div className="mb-6 px-4 py-3 bg-[#f7f7f7] border border-[#e5e5e5] flex items-center justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.15em] text-[#a0a0a0] mb-0.5">Demo access</p>
+              <p className="text-xs text-[#5c5c5c]">demo &nbsp;·&nbsp; demo123</p>
+            </div>
             <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading && (
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {loading ? 'Signing in...' : 'Sign in'}
+              type="button"
+              onClick={() => { setUsername('demo'); setPassword('demo123') }}
+              className="text-[10px] uppercase tracking-[0.1em] text-[#1c69d4] hover:underline shrink-0">
+              Use demo
             </button>
           </div>
-        </form>
+
+          {error && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-[#5c5c5c] mb-2">Username</label>
+              <input
+                type="text" required autoFocus value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full px-4 py-3.5 text-sm bg-[#f7f7f7] border border-[#e5e5e5] rounded text-[#1a1a1a] placeholder-[#b0b0b0] focus:outline-none focus:border-[#1c69d4] focus:ring-2 focus:ring-[#1c69d4]/10 transition-all"
+                placeholder="Enter username"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-[#5c5c5c] mb-2">Password</label>
+              <input
+                type="password" required value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full px-4 py-3.5 text-sm bg-[#f7f7f7] border border-[#e5e5e5] rounded text-[#1a1a1a] placeholder-[#b0b0b0] focus:outline-none focus:border-[#1c69d4] focus:ring-2 focus:ring-[#1c69d4]/10 transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1a1a1a] text-white text-sm font-medium rounded hover:bg-[#333] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-2">
+              {loading ? 'Signing in…' : <>Sign in <ArrowRight className="h-4 w-4" /></>}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
