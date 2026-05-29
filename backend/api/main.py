@@ -62,50 +62,6 @@ def _ensure_users():
         logger.warning(f"User seed skipped: {e}")
 
 
-def _ensure_schema():
-    """Run schema + seed SQL on startup if the tables are empty or missing."""
-    import os, pathlib
-    try:
-        db = connect_db()
-        cursor = db.cursor()
-        # Check if Vehicle table exists and has Prestige Drive data
-        cursor.execute("SHOW TABLES LIKE 'Vehicle'")
-        table_exists = cursor.fetchone()
-        if table_exists:
-            cursor.execute("SELECT COUNT(*) FROM Vehicle WHERE brand IN ('Ferrari','Rolls-Royce','Lamborghini','Bentley','Porsche','McLaren')")
-            luxury_count = cursor.fetchone()[0]
-        else:
-            luxury_count = 0
-        cursor.close()
-        db.close()
-
-        if luxury_count >= 10:
-            return  # Already seeded with Prestige Drive fleet
-
-        # Need to seed — find and run SQL files
-        base = pathlib.Path(__file__).parent.parent / "sql"
-        conn = connect_db()
-        for sql_file in ["schema.sql", "auth.sql", "views.sql", "insert_data.sql"]:
-            path = base / sql_file
-            if not path.exists():
-                continue
-            sql = path.read_text()
-            cur = conn.cursor()
-            for statement in sql.split(";"):
-                stmt = statement.strip()
-                if stmt and not stmt.startswith("--"):
-                    try:
-                        cur.execute(stmt)
-                    except Exception:
-                        pass
-            conn.commit()
-            cur.close()
-        conn.close()
-        logger.info("Production database seeded with Prestige Drive fleet")
-    except Exception as e:
-        logger.warning(f"Schema seed skipped: {e}")
-
-
 def _refresh_demo_dates():
     """
     Keep demo data perpetually valid.
@@ -148,7 +104,6 @@ async def _demo_refresh_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _ensure_schema()                                  # seed DB if empty / old data
     _ensure_users()                                   # create admin + demo if missing
     _refresh_demo_dates()                             # keep demo dates current
     task = asyncio.create_task(_demo_refresh_loop())  # then every 24 h

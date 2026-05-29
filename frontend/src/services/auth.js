@@ -14,7 +14,7 @@ export const login = async (username, password) => {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      timeout: 90000 // 90s — Render free tier can take 60-80s to wake from sleep
+      timeout: 45000 // 45 second timeout to handle Render wake-up time
     })
     
     if (response.data.access_token) {
@@ -33,11 +33,11 @@ export const login = async (username, password) => {
     console.error('Login error:', error)
     
     if (error.code === 'ECONNABORTED') {
-      throw 'The server is waking up — this takes up to 60 seconds on the free tier. Please try again.'
+      throw 'Connection timeout. The server may be waking up (Render free tier sleeps after inactivity). Please try again in a moment.'
     }
-
+    
     if (error.code === 'ERR_NETWORK') {
-      throw 'The server is starting up. Please wait a moment and try again.'
+      throw 'Network error. Please check: 1) Your internet connection, 2) The server may be starting up (wait 30s and retry), 3) CORS configuration on the backend.'
     }
     
     if (error.response?.status === 401) {
