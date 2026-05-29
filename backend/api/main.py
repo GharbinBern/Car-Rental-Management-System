@@ -17,6 +17,49 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _ensure_schema():
+    """Seed the database with Prestige Drive data if it still has old/empty data."""
+    import pathlib
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("SHOW TABLES LIKE 'Vehicle'")
+        if cursor.fetchone():
+            cursor.execute(
+                "SELECT COUNT(*) FROM Vehicle WHERE brand IN "
+                "('Ferrari','Rolls-Royce','Lamborghini','Bentley','Porsche','McLaren','Maserati','Aston Martin')"
+            )
+            luxury_count = cursor.fetchone()[0]
+        else:
+            luxury_count = 0
+        cursor.close()
+        db.close()
+
+        if luxury_count >= 10:
+            return  # Already has Prestige Drive fleet
+
+        logger.info("Seeding database with Prestige Drive fleet…")
+        base = pathlib.Path(__file__).parent.parent / "sql"
+        conn = connect_db()
+        for sql_file in ["schema.sql", "auth.sql", "views.sql", "insert_data.sql"]:
+            path = base / sql_file
+            if not path.exists():
+                continue
+            sql = path.read_text()
+            cur = conn.cursor()
+            for statement in [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]:
+                try:
+                    cur.execute(statement)
+                except Exception:
+                    pass
+            conn.commit()
+            cur.close()
+        conn.close()
+        logger.info("Database seeded successfully")
+    except Exception as e:
+        logger.warning(f"Schema seed skipped: {e}")
+
+
 def _ensure_users():
     """
     Create the users table and default accounts if they don't exist.
@@ -104,6 +147,7 @@ async def _demo_refresh_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _ensure_schema()                                  # seed DB if old/empty data
     _ensure_users()                                   # create admin + demo if missing
     _refresh_demo_dates()                             # keep demo dates current
     task = asyncio.create_task(_demo_refresh_loop())  # then every 24 h

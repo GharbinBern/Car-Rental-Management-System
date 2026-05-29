@@ -117,7 +117,12 @@ export default function Login() {
             <button
               type="submit" disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-[#1a1a1a] text-white text-sm font-medium rounded hover:bg-[#333] disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-2">
-              {loading ? 'Signing in…' : <>Sign in <ArrowRight className="h-4 w-4" /></>}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Connecting…
+                </span>
+              ) : <>Sign in <ArrowRight className="h-4 w-4" /></>}
             </button>
           </form>
         </div>

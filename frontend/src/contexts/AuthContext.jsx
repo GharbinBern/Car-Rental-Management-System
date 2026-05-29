@@ -2,6 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react'
 import { Car } from 'lucide-react'
 import { getCurrentUser, login as authLogin, logout as authLogout } from '../services/auth'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -9,6 +11,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Pre-warm the backend the instant the app opens — this wakes Render
+    // from sleep before the user even sees the login form
+    fetch(`${API_URL}/auth/health`, { method: 'GET' }).catch(() => {})
+
     try {
       const currentUser = getCurrentUser()
       if (currentUser) setUser(currentUser)
