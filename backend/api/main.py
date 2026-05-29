@@ -47,9 +47,14 @@ def _ensure_schema():
                 continue
             sql = path.read_text()
             cur = conn.cursor()
-            for statement in [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]:
+            for raw in sql.split(";"):
+                # Strip leading comment lines — CREATE TABLE blocks start with -- comments
+                lines = [l for l in raw.split("\n") if not l.strip().startswith("--")]
+                stmt = "\n".join(lines).strip()
+                if not stmt:
+                    continue
                 try:
-                    cur.execute(statement)
+                    cur.execute(stmt)
                 except Exception:
                     pass
             conn.commit()

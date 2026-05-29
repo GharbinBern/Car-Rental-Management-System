@@ -52,38 +52,58 @@ api.interceptors.response.use(
   }
 )
 
-// API service functions
+// ── Response cache ────────────────────────────────────────────────────────────
+// GET endpoints are cached for 3 minutes so navigating between pages doesn't
+// re-fetch everything from scratch. Write operations clear the relevant entries.
+const _cache = new Map()
+const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+
+function _cachedGet(url) {
+  const hit = _cache.get(url)
+  if (hit && Date.now() - hit.ts < CACHE_TTL) return Promise.resolve(hit.data)
+  return api.get(url).then(res => {
+    _cache.set(url, { data: res, ts: Date.now() })
+    return res
+  })
+}
+
+function _bust(...keys) {
+  keys.forEach(k => {
+    _cache.forEach((_, url) => { if (url.includes(k)) _cache.delete(url) })
+  })
+}
+
+// ── API service functions
 export const apiService = {
-  // Vehicles
-  getVehicles: () => api.get('/vehicles/'),
-  addVehicle: (data) => api.post('/vehicles/', data),
-  updateVehicle: (id, data) => api.put(`/vehicles/${id}`, data),
-  deleteVehicle: (id) => api.delete(`/vehicles/${id}`),
+  // Vehicles — cached reads, bust on write
+  getVehicles: () => _cachedGet('/vehicles/'),
+  addVehicle: (data) => api.post('/vehicles/', data).then(r => { _bust('vehicles') ; return r }),
+  updateVehicle: (id, data) => api.put(`/vehicles/${id}`, data).then(r => { _bust('vehicles') ; return r }),
+  deleteVehicle: (id) => api.delete(`/vehicles/${id}`).then(r => { _bust('vehicles') ; return r }),
 
-  // Customers
-  getCustomers: () => api.get('/customers/'),
-  addCustomer: (data) => api.post('/customers/', data),
-  updateCustomer: (id, data) => api.put(`/customers/${id}`, data),
-  deleteCustomer: (id) => api.delete(`/customers/${id}`),
+  // Customers — cached reads, bust on write
+  getCustomers: () => _cachedGet('/customers/'),
+  addCustomer: (data) => api.post('/customers/', data).then(r => { _bust('customers') ; return r }),
+  updateCustomer: (id, data) => api.put(`/customers/${id}`, data).then(r => { _bust('customers') ; return r }),
+  deleteCustomer: (id) => api.delete(`/customers/${id}`).then(r => { _bust('customers') ; return r }),
 
-  // Rentals
-  getRentals: () => api.get('/rentals/'),
-  addRental: (data) => api.post('/rentals/', data),
-  updateRental: (id, data) => api.put(`/rentals/${id}`, data),
-  returnVehicle: (id, data) => api.post(`/rentals/${id}/return`, data),
-  deleteRental: (id) => api.delete(`/rentals/${id}`),
+  // Rentals — cached reads, bust on write
+  getRentals: () => _cachedGet('/rentals/'),
+  addRental: (data) => api.post('/rentals/', data).then(r => { _bust('rentals', 'vehicles') ; return r }),
+  updateRental: (id, data) => api.put(`/rentals/${id}`, data).then(r => { _bust('rentals') ; return r }),
+  returnVehicle: (id, data) => api.post(`/rentals/${id}/return`, data).then(r => { _bust('rentals', 'vehicles') ; return r }),
+  deleteRental: (id) => api.delete(`/rentals/${id}`).then(r => { _bust('rentals') ; return r }),
 
-  // Analytics
-  getDashboardAnalytics: () => api.get('/analytics/dashboard'),
-  getRevenueAnalytics: (period = 'month') => api.get(`/analytics/revenue?period=${period}`),
-  getFleetStatus: () => api.get('/analytics/fleet-status'),
+  // Analytics — cached
+  getDashboardAnalytics: () => _cachedGet('/analytics/dashboard'),
+  getRevenueAnalytics: (period = 'month') => _cachedGet(`/analytics/revenue?period=${period}`),
+  getFleetStatus: () => _cachedGet('/analytics/fleet-status'),
 
-  // Maintenance
-  getMaintenance: () => api.get('/maintenance/'),
-  scheduleMaintenance: (data) => api.post('/maintenance/', data),
-  completeMaintenance: (id) => api.put(`/maintenance/${id}/complete`),
+  // Maintenance — cached reads, bust on write
+  getMaintenance: () => _cachedGet('/maintenance/'),
+  scheduleMaintenance: (data) => api.post('/maintenance/', data).then(r => { _bust('maintenance', 'vehicles') ; return r }),
+  completeMaintenance: (id) => api.put(`/maintenance/${id}/complete`).then(r => { _bust('maintenance') ; return r }),
 
-  // General API method for custom requests
   get: (url) => api.get(url),
   post: (url, data) => api.post(url, data),
   put: (url, data) => api.put(url, data),
